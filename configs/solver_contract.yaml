@@ -1,0 +1,34 @@
+solver:
+  primary_method: Radau
+  fallback_method: BDF
+  dense_output: true
+  max_step: 0.1
+  rtol: 1.0e-8
+  atol:
+    x: 1.0e-10
+    y: 1.0e-10
+    R: 1.0e-12
+    P: 1.0e-12
+
+jacobian:
+  mode: analytic_preferred
+  fallback: finite_difference
+  required_for:
+    - solve_full_ode
+    - solve_post_segregation
+
+events:
+  enabled: true
+  terminal_on_spinodal_crossing: false
+  detect:
+    - spinodal_crossing
+    - nonphysical_negative_state
+
+stability:
+  partition_coeff:
+    strategy: log_domain
+    clip_exp_argument: [-300.0, 300.0]
+
+acceptance:
+  max_newton_failures_before_fallback: 2
+  require_governance_check: true

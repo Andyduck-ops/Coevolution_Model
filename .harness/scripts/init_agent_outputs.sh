@@ -12,7 +12,9 @@ if [ -z "$TASK_DIR" ]; then
 fi
 
 OUT_DIR="$TASK_DIR/agent-outputs"
+EVIDENCE_DIR="$TASK_DIR/evidence"
 mkdir -p "$OUT_DIR"
+mkdir -p "$EVIDENCE_DIR"
 
 for f in implement-result.md check-result.md debug-result.md finish-result.md; do
   if [ ! -f "$OUT_DIR/$f" ]; then
@@ -20,4 +22,8 @@ for f in implement-result.md check-result.md debug-result.md finish-result.md; d
   fi
 done
 
-echo "[OK] agent-outputs 模板已初始化: $OUT_DIR"
+if [ ! -f "$EVIDENCE_DIR/review_meta.json" ]; then
+  cp ".harness/templates/evidence/review_meta.json" "$EVIDENCE_DIR/review_meta.json"
+fi
+
+echo "[OK] agent-outputs/evidence 模板已初始化: $TASK_DIR"

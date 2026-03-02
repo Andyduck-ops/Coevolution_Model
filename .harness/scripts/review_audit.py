@@ -33,6 +33,32 @@ def load_current_task() -> Path | None:
 
 def run(task_dir: Path) -> dict:
     findings: list[dict] = []
+    expected_agents: dict = {}
+
+    task_meta_file = task_dir / "task.json"
+    if not task_meta_file.is_file():
+        findings.append({"severity": "error", "item": "task-meta", "detail": "missing task.json"})
+    else:
+        try:
+            task_meta = json.loads(task_meta_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            task_meta = {}
+            findings.append({"severity": "error", "item": "task-meta", "detail": "invalid task.json"})
+        expected_agents = task_meta.get("agents", {})
+        if not isinstance(expected_agents, dict):
+            findings.append({"severity": "error", "item": "task-agents", "detail": "task.json.agents must be object"})
+            expected_agents = {}
+        for key in ["implementer", "reviewer"]:
+            if not str(expected_agents.get(key, "")).strip():
+                findings.append({"severity": "error", "item": "task-agents-field", "detail": f"missing: agents.{key}"})
+        if expected_agents.get("implementer") == expected_agents.get("reviewer"):
+            findings.append(
+                {
+                    "severity": "error",
+                    "item": "task-agents-independence",
+                    "detail": "task.json agents implementer/reviewer must be different",
+                }
+            )
 
     check_result = task_dir / "agent-outputs" / "check-result.md"
     if not check_result.is_file():
@@ -73,6 +99,23 @@ def run(task_dir: Path) -> dict:
                     "detail": "implementer and reviewer must be different",
                 }
             )
+        if expected_agents:
+            if meta.get("implementer") != expected_agents.get("implementer"):
+                findings.append(
+                    {
+                        "severity": "error",
+                        "item": "review-agent-binding",
+                        "detail": "review_meta implementer != task.json agents.implementer",
+                    }
+                )
+            if meta.get("reviewer") != expected_agents.get("reviewer"):
+                findings.append(
+                    {
+                        "severity": "error",
+                        "item": "review-agent-binding",
+                        "detail": "review_meta reviewer != task.json agents.reviewer",
+                    }
+                )
 
     spec_report = task_dir / "evidence" / "spec_audit_report.json"
     if spec_report.is_file():

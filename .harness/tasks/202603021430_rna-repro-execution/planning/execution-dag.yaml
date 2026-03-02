@@ -1,0 +1,120 @@
+plan:
+  - id: P1_traceability
+    owner: plan-agent
+    goal: 冻结方程-代码-测试映射（P0/P1）
+    inputs:
+      - .harness/spec/math/index.md
+      - .trellis/spec/guides/equations-reference.md
+      - src/
+    outputs:
+      - docs/repro/p0_p1_traceability.md
+    verify:
+      - grep -n "Eq\\.|function|test" "docs/repro/p0_p1_traceability.md"
+
+  - id: P2_solver_contract
+    owner: plan-agent
+    needs: [P1_traceability]
+    goal: 冻结数值契约（Jacobian/事件/BDF回退）
+    inputs:
+      - .trellis/spec/backend/numerical-computing.md
+      - src/rna_llps/pipeline/smoke.py
+    outputs:
+      - configs/solver_contract.yaml
+      - tests/test_solver_contract.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_solver_contract.py
+
+implement:
+  - id: I1_ode_wrappers
+    owner: implement-agent
+    needs: [P2_solver_contract]
+    outputs:
+      - src/rna_llps/solvers/ode_wrappers.py
+      - tests/test_ode_wrappers.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_ode_wrappers.py
+
+  - id: I2_thermo_scalars
+    owner: implement-agent
+    needs: [P1_traceability]
+    outputs:
+      - src/rna_llps/thermo/flory_huggins.py
+      - src/rna_llps/models/scalar_dynamics.py
+      - tests/test_flory_huggins.py
+      - tests/test_scalar_dynamics.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_flory_huggins.py tests/test_scalar_dynamics.py
+
+  - id: I3_post_segregation
+    owner: implement-agent
+    needs: [I1_ode_wrappers, I2_thermo_scalars]
+    outputs:
+      - src/rna_llps/models/post_segregation.py
+      - tests/test_post_segregation.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_post_segregation.py
+
+  - id: I4_stability_analysis
+    owner: implement-agent
+    needs: [I1_ode_wrappers, I2_thermo_scalars]
+    outputs:
+      - src/rna_llps/analysis/stability.py
+      - tests/test_stability_analysis.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_stability_analysis.py
+
+  - id: I5_figure_reproduction
+    owner: implement-agent
+    needs: [I3_post_segregation, I4_stability_analysis]
+    outputs:
+      - scripts/fig1_stability.py
+      - scripts/fig2_timecourse.py
+      - scripts/fig3_spinodal.py
+      - scripts/fig4_post_segregation.py
+      - figures/paper/
+    verify:
+      - .venv/bin/python scripts/fig1_stability.py --config configs/default_params.yaml --out figures/paper
+
+check:
+  - id: C1_engineering_gate
+    owner: check-agent
+    needs: [I5_figure_reproduction]
+    verify:
+      - bash .harness/scripts/run_quality_gate.sh
+
+  - id: C2_reproduction_gate
+    owner: check-agent
+    needs: [C1_engineering_gate]
+    outputs:
+      - results/repro/repro_report.json
+    verify:
+      - .venv/bin/python scripts/check_reproduction_metrics.py --fig-dir figures/paper --out results/repro/repro_report.json
+
+debug:
+  - id: D1_solver_stability_fix
+    owner: debug-agent
+    trigger: C1_engineering_gate_failed_or_C2_reproduction_gate_failed
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_numerical_stability_regression.py
+
+  - id: D2_figure_bias_fix
+    owner: debug-agent
+    trigger: C2_reproduction_gate_failed
+    verify:
+      - .venv/bin/python scripts/check_reproduction_metrics.py --fig-dir figures/paper --strict
+
+finish:
+  - id: F1_release_readout
+    owner: finish-agent
+    needs: [C2_reproduction_gate]
+    outputs:
+      - .harness/tasks/202603021430_rna-repro-execution/agent-outputs/finish-result.md
+      - README.md
+    verify:
+      - bash .harness/scripts/opsctl.sh governance-check --strict
+
+stop_conditions:
+  - id: stop_ready
+    rule: all_check_gates_pass
+  - id: escalate_human
+    rule: same_failure_class_ge_3

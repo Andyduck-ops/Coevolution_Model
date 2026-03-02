@@ -3,6 +3,10 @@
   "title": "RNA spec remediation + harness bootstrap",
   "status": "in_progress",
   "createdAt": "2026-03-02",
-  "owner": "claude-agent",
+  "owner": "gpt-5.2-xhigh",
+  "agents": {
+    "implementer": "gpt-5.2-xhigh-implementer",
+    "reviewer": "gpt-5.2-xhigh-reviewer"
+  },
   "debug_count": 0
 }

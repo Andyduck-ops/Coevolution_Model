@@ -36,6 +36,7 @@
 - `.harness/spec/operations/pipeline-contract.yaml`
 - `.harness/spec/operations/review-gate.md`
 - `.harness/spec/operations/command-permission-map.yaml`
+- `.harness/spec/operations/task-decomposition-card.md`
 
 ## 产物
 

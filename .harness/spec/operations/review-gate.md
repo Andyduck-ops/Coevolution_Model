@@ -17,6 +17,7 @@
    - `review_time_utc`
 3. 审核独立性：`implementer != reviewer`
 4. 若 `spec_audit_report.errors > 0`，审核必须判定未通过。
+5. 角色绑定：`review_meta` 中 implementer/reviewer 必须与 `task.json.agents` 一致。
 
 ## 阻断规则
 

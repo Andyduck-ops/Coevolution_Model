@@ -25,6 +25,8 @@ stages:
         min_chars: 20
       - path: evidence/spec_audit_report.json
         min_chars: 20
+      - path: evidence/review_meta.json
+        min_chars: 20
 
   - id: debug
     requires: [check]

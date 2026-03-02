@@ -8,6 +8,8 @@
 - [x] 固化工程依赖版本（`pyproject.toml`）
 - [x] 建立最小可运行 Python 脚手架（`src/` + `tests/`）
 - [x] 建立 E2E smoke 链路（参数加载→最小 ODE→产图）
+- [x] 建立任务拆分方法卡与治理分配模板（多 Agent 审核闭环）
+- [x] 启动下一阶段任务包：`202603021430_rna-repro-execution`
 - [ ] 补齐 spec P0 条目并进入论文模型实现
 
 ## 快速开始
