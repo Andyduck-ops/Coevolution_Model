@@ -3,3 +3,5 @@
 {"type":"spec","path":"spec/backend/index.md","desc":"后端数值实现规范"}
 {"type":"spec","path":"spec/figures/index.md","desc":"图表复现规范"}
 {"type":"spec","path":"spec/reproducibility/index.md","desc":"论文复现与合规规范"}
+{"type":"spec","path":"spec/operations/permission-ladder.md","desc":"权限阶梯与结构化升级"}
+{"type":"spec","path":"spec/operations/reference-sync.md","desc":"上游harness references 同步策略"}

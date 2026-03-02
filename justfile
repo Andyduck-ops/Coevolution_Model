@@ -12,6 +12,9 @@ test:
 build:
     .venv/bin/python -m compileall -q src
 
-check: lint test build
+e2e:
+    bash .harness/scripts/e2e_smoke.sh
+
+check: lint test build e2e
 
 all: bootstrap check

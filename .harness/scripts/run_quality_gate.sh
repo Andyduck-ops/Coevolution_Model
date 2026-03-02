@@ -9,5 +9,6 @@ fi
 ".venv/bin/python" -m ruff check src tests
 ".venv/bin/python" -m pytest -q
 ".venv/bin/python" -m compileall -q src
+bash .harness/scripts/e2e_smoke.sh
 
 echo "[OK] quality gate passed"

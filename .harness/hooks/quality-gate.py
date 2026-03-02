@@ -140,7 +140,8 @@ def get_verify_commands(harness_dir: str) -> list[str]:
                 line = line.strip()
                 if line.startswith("- **Test**:") or \
                    line.startswith("- **Lint**:") or \
-                   line.startswith("- **Build**:"):
+                   line.startswith("- **Build**:") or \
+                   line.startswith("- **E2E Smoke**:"):
                     parts = line.split("`")
                     if len(parts) >= 2:
                         cmd = parts[1].strip()

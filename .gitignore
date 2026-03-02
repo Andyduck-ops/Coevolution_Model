@@ -6,6 +6,9 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+src/*.egg-info/
+results/
+figures/
 .harness/.stale-knowledge.json
 .harness/tasks/*/.state.json
 *:Zone.Identifier

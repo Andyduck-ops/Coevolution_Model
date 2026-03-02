@@ -7,13 +7,20 @@
 - [x] 搭建 `.harness/` 执行环境（hooks + quality gate + task context）
 - [x] 固化工程依赖版本（`pyproject.toml`）
 - [x] 建立最小可运行 Python 脚手架（`src/` + `tests/`）
-- [ ] 补齐 spec P0 条目并进入模型实现
+- [x] 建立 E2E smoke 链路（参数加载→最小 ODE→产图）
+- [ ] 补齐 spec P0 条目并进入论文模型实现
 
 ## 快速开始
 
 ```bash
 bash .harness/scripts/bootstrap_env.sh
 bash .harness/scripts/run_quality_gate.sh
+```
+
+或分步执行：
+
+```bash
+.venv/bin/python scripts/e2e_smoke.py --config configs/default_params.yaml
 ```
 
 ## Harness 入口
@@ -23,6 +30,7 @@ bash .harness/scripts/run_quality_gate.sh
 - 核心规范：`.harness/spec/`
 - Hook 配置：`.claude/settings.json`
 
-## 与现有 Trellis 规范关系
+## 关于规范来源
 
-当前仓库保留 `.trellis/spec/` 作为已有规范资产；`.harness/spec/` 负责执行注入与质量门。
+`/home/eric/harness/references/` 是上游系统管理知识库；
+本项目以 `.harness/spec/` 作为落地执行层，并按里程碑进行对照同步。

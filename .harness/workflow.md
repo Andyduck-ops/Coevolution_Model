@@ -14,6 +14,7 @@
 - **Test**: `.venv/bin/python -m pytest -q`
 - **Lint**: `.venv/bin/python -m ruff check src tests`
 - **Build**: `.venv/bin/python -m compileall -q src`
+- **E2E Smoke**: `bash .harness/scripts/e2e_smoke.sh`
 
 ## Pipeline Stages
 
@@ -28,6 +29,23 @@ plan → implement → check → [debug ≤3] → finish
 | check | 运行验证并审计 | `agent-outputs/check-result.md` |
 | debug | 失败修复（最多 3 次） | `agent-outputs/debug-result.md` |
 | finish | 交付收束 | 变更摘要 + 风险 + 下一步 |
+
+## Permission Ladder
+
+详见：`.harness/spec/operations/permission-ladder.md`
+
+- L1: 只读分析
+- L2: 验证命令
+- L3: 修改代码
+- L4: 外部操作（推送/发布）
+
+## Structured Escalation Rules
+
+触发任一条件即升级求助：
+1. 同类失败累计 2 次，第三次前必须换策略；
+2. 缺失关键上下文；
+3. 需要 L4 外部操作；
+4. 多方案无法自动裁决。
 
 ## Current Project Focus (2026-03-02)
 
