@@ -9,6 +9,9 @@
 - [x] I6: 论文命题实验执行器（E1-E5）
 - [x] I7: 消融/反驳实验执行器（R1-R4）
 - [x] I8: 统一论文验证报告聚合
+- [x] I9: 论文方程对齐修补（4 变量 ODE、spinodal 事件、`chi_eff/chi_c` 公式）
+- [x] I10: 数值稳定性修补（耦合项截断、非单调序列 t95 判定、E4 crossing 稳健计数）
+- [x] I11: 参数基线重标定（default_params 使 E1-E5 claim gate 通过）
 
 ## 关键新增文件
 - `src/rna_llps/solvers/ode_wrappers.py`

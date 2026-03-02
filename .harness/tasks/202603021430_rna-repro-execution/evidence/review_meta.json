@@ -9,7 +9,9 @@
     "figure reproduction scripts",
     "claim experiments",
     "ablation experiments",
-    "paper validation merge report"
+    "paper validation merge report",
+    "equation alignment audit",
+    "parameter retuning"
   ],
-  "review_time_utc": "2026-03-02T08:00:00Z"
+  "review_time_utc": "2026-03-02T08:36:00Z"
 }

@@ -11,10 +11,11 @@
 ## 当前边界
 - 当前复现报告以“产物完整性 + 管线可重复”为主。
 - 已补“参考图保真门禁”能力，但当前默认阈值尚未通过。
-- 已补“论文命题+消融”门禁能力，但当前 claim/ablation 综合门禁尚未通过。
-- 下一步需做“论文曲线级数值偏差”标定（点位误差、趋势一致性）。
+- 已补“论文命题+消融”门禁能力，且 claim gate 已通过（E1-E5）。
+- 当前剩余阻断项：ablation gate 未通过、repro fidelity gate 未通过。
+- 下一步需做两类工作：ablation 结构修复 + 论文曲线级数值标定。
 
 ## 建议下一迭代
-1. 将论文原图数据点数字化，建立误差阈值。
-2. 增加 `scripts/check_reproduction_metrics.py` 的曲线对齐评分。
-3. 为 `critical_stress` 与 `compute_spinodal` 增加文献标定参数集。
+1. 优先修复 R3/R4（post-seg 初始化映射与替代非线性可解释性）。
+2. 将论文原图数据点数字化，建立曲线级误差阈值并纳入保真门禁。
+3. 对 `critical_stress` / `compute_spinodal` 引入论文参数反演与灵敏度报告。

@@ -8,8 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.integrate import OdeSolution, solve_ivp
 
-from rna_llps.models.scalar_dynamics import compute_bn
-from rna_llps.thermo.flory_huggins import chi_critical, chi_rp_eff, partition_coeff_logsafe
+from rna_llps.thermo.flory_huggins import chi_critical, chi_rp_eff
 
 RHS = Callable[[float, np.ndarray], np.ndarray]
 
@@ -30,13 +29,20 @@ class ODESolveSummary:
 
 
 def full_system_rhs(t: float, y: np.ndarray, params: dict[str, float]) -> np.ndarray:
-    """RHS for 4-variable coupled RNA-peptide dynamics."""
+    """RHS for 4-variable coupled RNA-peptide dynamics.
+
+    Paper-aligned system:
+    ``[R, P, x_bar, y_bar]`` with stress-coupling
+    ``S = x_bar * P * y_bar``.
+    """
     _ = t
     r, p, x_bar, y_bar = (float(v) for v in y)
 
     alpha = float(params["alpha"])
     beta = float(params["beta"])
     kappa = float(params["kappa"])
+    k_0 = float(params["k_0"])
+    mu = float(params["mu"])
     mu_x = float(params["mu_x"])
     mu_y = float(params["mu_y"])
     k_r = float(params["K_R"])
@@ -44,94 +50,64 @@ def full_system_rhs(t: float, y: np.ndarray, params: dict[str, float]) -> np.nda
     v_x = float(params["V_x"])
     v_y = float(params["V_y"])
     gamma = float(params["gamma"])
+    delta = float(params["delta_0"]) * float(params["E"])
+    n_order = float(params["n"])
 
-    b_n = compute_bn(
-        delta_0=float(params["delta_0"]),
-        e_scale=float(params["E"]),
-        gamma=gamma,
-        n_order=float(params["n"]),
+    s_raw = x_bar * p * y_bar
+    s_coupling = float(np.clip(s_raw, -1e6, 1e6))
+    s = max(s_coupling, 0.0)
+    s_safe = max(s, 1e-12)
+    s_clip = min(s_safe, 1e6)
+    gs_clip = max(gamma * s_clip, 0.0)
+    gs_n = gs_clip**n_order
+    stress_den = 1.0 + gs_n
+    stress_decay = delta / stress_den
+
+    dr_dt = alpha * r * (1.0 + beta * s_coupling) * (1.0 - r / k_r) - stress_decay * r
+    dp_dt = (k_0 * r + kappa * r * s_coupling) * (1.0 - p / k_p) - mu * p
+
+    stress_gradient = (
+        n_order
+        * delta
+        * (gamma**n_order)
+        * (s_clip ** (n_order - 1.0))
+        / ((1.0 + gs_n) ** 2)
     )
-    pi_p = partition_coeff_logsafe(
-        x_bar=x_bar,
-        y_bar=y_bar,
-        epsilon=float(params["epsilon"]),
-        k_bt=float(params["k_BT"]),
-    )
 
-    dr_dt = alpha * r * (1.0 - r / k_r) - gamma * x_bar * r
-    dp_dt = beta * p * (1.0 - p / k_p) + kappa * y_bar * r - b_n * p / (1.0 + p)
-    dp_dt += 0.05 * (pi_p - 1.0)
-
-    dx_dt = mu_x * (v_x * r / (1.0 + r) - x_bar)
-    dy_dt = mu_y * (v_y * p / (1.0 + p) - y_bar)
+    dx_dt = v_x * p * y_bar * (alpha * beta + stress_gradient) - mu_x * x_bar
+    dy_dt = kappa * v_y * r * x_bar - mu_y * y_bar
 
     return np.array([dr_dt, dp_dt, dx_dt, dy_dt], dtype=float)
 
 
 def jac_full_system(t: float, y: np.ndarray, params: dict[str, float]) -> np.ndarray:
-    """Analytic Jacobian for ``full_system_rhs``."""
+    """Numerical Jacobian for ``full_system_rhs`` (central finite difference)."""
     _ = t
-    r, p, x_bar, y_bar = (float(v) for v in y)
+    state = np.asarray(y, dtype=float)
+    jac = np.zeros((4, 4), dtype=float)
 
-    alpha = float(params["alpha"])
-    beta = float(params["beta"])
-    kappa = float(params["kappa"])
-    mu_x = float(params["mu_x"])
-    mu_y = float(params["mu_y"])
-    k_r = float(params["K_R"])
-    k_p = float(params["K_P"])
-    v_x = float(params["V_x"])
-    v_y = float(params["V_y"])
-    gamma = float(params["gamma"])
+    for i in range(state.size):
+        h = 1e-7 * max(1.0, abs(state[i]))
+        y_plus = state.copy()
+        y_minus = state.copy()
+        y_plus[i] += h
+        y_minus[i] -= h
+        f_plus = full_system_rhs(0.0, y_plus, params)
+        f_minus = full_system_rhs(0.0, y_minus, params)
+        jac[:, i] = (f_plus - f_minus) / (2.0 * h)
 
-    b_n = compute_bn(
-        delta_0=float(params["delta_0"]),
-        e_scale=float(params["E"]),
-        gamma=gamma,
-        n_order=float(params["n"]),
-    )
-
-    # d(dr)/d(...)
-    j11 = alpha * (1.0 - 2.0 * r / k_r) - gamma * x_bar
-    j12 = 0.0
-    j13 = -gamma * r
-    j14 = 0.0
-
-    # d(dp)/d(...)
-    j21 = kappa * y_bar
-    j22 = beta * (1.0 - 2.0 * p / k_p) - b_n / (1.0 + p) ** 2
-    j23 = 0.05 * float(params["epsilon"]) * y_bar / float(params["k_BT"])
-    j24 = kappa * r + 0.05 * float(params["epsilon"]) * x_bar / float(params["k_BT"])
-
-    # d(dx)/d(...)
-    j31 = mu_x * v_x / (1.0 + r) ** 2
-    j32 = 0.0
-    j33 = -mu_x
-    j34 = 0.0
-
-    # d(dy)/d(...)
-    j41 = 0.0
-    j42 = mu_y * v_y / (1.0 + p) ** 2
-    j43 = 0.0
-    j44 = -mu_y
-
-    return np.array(
-        [
-            [j11, j12, j13, j14],
-            [j21, j22, j23, j24],
-            [j31, j32, j33, j34],
-            [j41, j42, j43, j44],
-        ],
-        dtype=float,
-    )
+    # Keep finite Jacobian even in edge cases.
+    if not np.isfinite(jac).all():
+        return np.nan_to_num(jac, nan=0.0, posinf=0.0, neginf=0.0)
+    return jac
 
 
 def event_spinodal_crossing(t: float, y: np.ndarray, params: dict[str, float]) -> float:
     """Event function for spinodal crossing detection."""
     _ = t
-    r = float(y[0])
-    p = float(y[1])
-    return chi_rp_eff(r, p, params) - chi_critical(params)
+    x_bar = float(y[2])
+    y_bar = float(y[3])
+    return chi_rp_eff(x_bar, y_bar, params) - chi_critical(params)
 
 
 def event_quasi_steady(

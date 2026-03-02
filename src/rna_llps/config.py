@@ -13,6 +13,8 @@ REQUIRED_PARAM_KEYS = {
     "alpha",
     "beta",
     "kappa",
+    "k_0",
+    "mu",
     "K_R",
     "K_P",
     "V_x",

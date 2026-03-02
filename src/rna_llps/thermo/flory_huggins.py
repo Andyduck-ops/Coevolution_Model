@@ -51,27 +51,39 @@ def partition_coeff_logsafe(
     return float(np.exp(log_pi))
 
 
-def chi_rp_eff(r: float, p: float, params: dict[str, float]) -> float:
-    """Effective interaction parameter for RNA-peptide mixture."""
-    v_r = float(params["v_R"])
-    v_p = float(params["v_P"])
-    chi_rr = float(params["chi_RR"])
-    chi_pp = float(params["chi_PP"])
-    chi_0 = float(params["chi_0"])
+def chi_rp_eff(x_bar: float, y_bar: float, params: dict[str, float]) -> float:
+    """Effective interaction parameter for RNA-peptide mixture.
 
-    r_eff = max(r, 0.0) / max(v_r, 1e-12)
-    p_eff = max(p, 0.0) / max(v_p, 1e-12)
-    return float(chi_0 + chi_rr * r_eff + chi_pp * p_eff)
+    Paper-consistent form:
+    ``chi_eff = chi_0 + (epsilon / k_BT) * x_bar * y_bar``.
+    """
+    chi_0 = float(params["chi_0"])
+    epsilon = float(params["epsilon"])
+    k_bt = float(params["k_BT"])
+    if k_bt <= 0.0:
+        msg = "k_BT must be positive for chi_rp_eff."
+        raise ValueError(msg)
+    return float(chi_0 + (epsilon / k_bt) * float(x_bar) * float(y_bar))
 
 
 def chi_critical(params: dict[str, float]) -> float:
-    """Critical effective interaction threshold used for spinodal events."""
+    """Critical effective interaction threshold used for spinodal events.
+
+    Paper-consistent form:
+    ``chi_c = sqrt((1/phi_R - chi_RR) * (1/phi_P - chi_PP))`` with
+    ``phi_R=v_R*K_R`` and ``phi_P=v_P*K_P``.
+    """
+    v_r = float(params["v_R"])
+    v_p = float(params["v_P"])
+    k_r = float(params["K_R"])
+    k_p = float(params["K_P"])
     chi_rr = float(params["chi_RR"])
     chi_pp = float(params["chi_PP"])
-    chi_0 = float(params["chi_0"])
 
-    geometric = float(np.sqrt(max(chi_rr * chi_pp, 0.0)))
-    return float(chi_0 + geometric)
+    phi_r = max(v_r * k_r, 1e-12)
+    phi_p = max(v_p * k_p, 1e-12)
+    radicand = (1.0 / phi_r - chi_rr) * (1.0 / phi_p - chi_pp)
+    return float(np.sqrt(max(radicand, 0.0)))
 
 
 def theta_r(r: float, p: float, params: dict[str, float]) -> float:

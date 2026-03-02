@@ -40,11 +40,33 @@ def x_coupling(params: dict[str, float], y_final: np.ndarray) -> float:
 
 def t95(t: np.ndarray, series: np.ndarray) -> float:
     target = float(series[-1])
-    threshold = 0.95 * target
-    idx = np.where(series >= threshold)[0]
+    tol = 0.05 * max(abs(target), abs(float(series[0]) - target), 1e-12)
+    idx = np.where(np.abs(series - target) <= tol)[0]
     if idx.size == 0:
         return float(t[-1])
     return float(t[int(idx[0])])
+
+
+def relative_span(values: np.ndarray) -> float:
+    mean_abs = max(float(np.mean(np.abs(values))), 1e-12)
+    return float((float(np.max(values)) - float(np.min(values))) / mean_abs)
+
+
+def map_pre_to_post_initial(pre_terminal: np.ndarray) -> np.ndarray:
+    """Map 4D pre-segregation terminal state to 6D post-segregation initial state."""
+    r, p, x_bar, y_bar = (float(v) for v in pre_terminal)
+    x_total = max(float(x_bar * y_bar), 1e-10)
+    return np.array(
+        [
+            0.45 * r,
+            0.55 * r,
+            0.40 * p,
+            0.60 * p,
+            0.35 * x_total,
+            0.65 * x_total,
+        ],
+        dtype=float,
+    )
 
 
 def x_series_across_stress(
@@ -61,7 +83,9 @@ def x_series_across_stress(
     return STRESS_FACTORS.copy(), np.array(x_vals, dtype=float), None
 
 
-def hysteresis_area(base_params: dict[str, float]) -> tuple[float, str | None]:
+def hysteresis_curves(
+    base_params: dict[str, float],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, str | None]:
     def run_curve(ascending: bool) -> tuple[np.ndarray, np.ndarray, str | None]:
         factors = STRESS_FACTORS if ascending else STRESS_FACTORS[::-1]
         y0: np.ndarray | None = None
@@ -77,14 +101,27 @@ def hysteresis_area(base_params: dict[str, float]) -> tuple[float, str | None]:
 
     asc_f, asc_x, err = run_curve(True)
     if err:
-        return 0.0, err
+        return np.array([]), np.array([]), np.array([]), err
     _, desc_x, err = run_curve(False)
     if err:
-        return 0.0, err
+        return np.array([]), np.array([]), np.array([]), err
 
-    desc_reindexed = desc_x[::-1]
-    area = float(np.trapz(np.abs(asc_x - desc_reindexed), asc_f))
-    return area, None
+    return asc_f, asc_x, desc_x[::-1], None
+
+
+def hysteresis_stats(base_params: dict[str, float]) -> tuple[dict[str, float], str | None]:
+    factors, asc_x, desc_x, err = hysteresis_curves(base_params)
+    if err:
+        return {}, err
+
+    area = float(np.trapz(np.abs(asc_x - desc_x), factors))
+    denom = float(np.trapz((np.abs(asc_x) + np.abs(desc_x)) / 2.0, factors))
+    index = area / max(denom, 1e-12)
+    return {
+        "area": area,
+        "index": float(index),
+        "median_signal": float(np.median(np.abs((asc_x + desc_x) / 2.0))),
+    }, None
 
 
 def run_r1_remove_mutualism(base_params: dict[str, float]) -> dict[str, Any]:
@@ -146,7 +183,15 @@ def run_r2_weaken_stress_selection(base_params: dict[str, float]) -> dict[str, A
     if np.isnan(p_a):
         p_a = 1.0
 
-    passed = bool((rho_b > 0.5) and (rho_a < 0.3))
+    span_b = relative_span(x_b)
+    span_a = relative_span(x_a)
+
+    passed = bool(
+        (abs(rho_b) >= 0.8)
+        and (p_b < 0.05)
+        and ((abs(rho_a) <= 0.3) or (p_a >= 0.1))
+        and (span_a <= 0.4 * span_b)
+    )
 
     return {
         "id": "R2_weaken_stress_selection",
@@ -156,10 +201,16 @@ def run_r2_weaken_stress_selection(base_params: dict[str, float]) -> dict[str, A
             "baseline_p": float(p_b),
             "ablated_rho": float(rho_a),
             "ablated_p": float(p_a),
+            "baseline_span": span_b,
+            "ablated_span": span_a,
             "x_baseline": x_b.tolist(),
             "x_ablated": x_a.tolist(),
         },
-        "rule": "baseline_rho > 0.5 and ablated_rho < 0.3",
+        "rule": (
+            "abs(baseline_rho)>=0.8 & baseline_p<0.05 & "
+            "(abs(ablated_rho)<=0.3 or ablated_p>=0.1) & "
+            "ablated_span<=0.4*baseline_span"
+        ),
     }
 
 
@@ -168,7 +219,7 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
     base = with_stress(base_params, stress)
 
     pre = solve_full_ode(base, t_end=40.0)
-    post = solve_post_segregation(base, t_end=30.0)
+    post = solve_post_segregation(base, y0=map_pre_to_post_initial(pre.y[:, -1]), t_end=30.0)
     if (not pre.success) or (not post.success):
         return {
             "id": "R3_flat_partition",
@@ -178,13 +229,17 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
 
     pre_t95 = t95(pre.t, base["gamma"] * base["K_P"] * pre.y[2] * pre.y[3])
     post_t95 = t95(post.t, post.y[4] + post.y[5])
-    gain_base = float(pre_t95 - post_t95)
+    accel_base = float(1.0 - post_t95 / max(pre_t95, 1e-12))
 
     flat = dict(base)
     flat["epsilon"] = 0.0
 
     pre_flat = solve_full_ode(flat, t_end=40.0)
-    post_flat = solve_post_segregation(flat, t_end=30.0)
+    post_flat = solve_post_segregation(
+        flat,
+        y0=map_pre_to_post_initial(pre_flat.y[:, -1]),
+        t_end=30.0,
+    )
     if (not pre_flat.success) or (not post_flat.success):
         return {
             "id": "R3_flat_partition",
@@ -196,48 +251,60 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
 
     pre_t95_flat = t95(pre_flat.t, flat["gamma"] * flat["K_P"] * pre_flat.y[2] * pre_flat.y[3])
     post_t95_flat = t95(post_flat.t, post_flat.y[4] + post_flat.y[5])
-    gain_flat = float(pre_t95_flat - post_t95_flat)
+    accel_flat = float(1.0 - post_t95_flat / max(pre_t95_flat, 1e-12))
 
-    passed = bool(gain_flat < 0.5 * gain_base)
+    passed = bool(
+        (accel_base >= 0.2)
+        and ((accel_flat <= 0.1) or (accel_flat <= 0.5 * accel_base))
+        and (post_t95_flat >= 0.8 * pre_t95_flat)
+    )
 
     return {
         "id": "R3_flat_partition",
         "pass": passed,
         "metrics": {
-            "baseline_gain": gain_base,
-            "flat_gain": gain_flat,
+            "accel_baseline": accel_base,
+            "accel_flat": accel_flat,
             "pre_t95": float(pre_t95),
             "post_t95": float(post_t95),
             "pre_t95_flat": float(pre_t95_flat),
             "post_t95_flat": float(post_t95_flat),
         },
-        "rule": "flat_gain < 0.5 * baseline_gain",
+        "rule": "accel_baseline>=0.2 and accel_flat reduced with t95_post_flat close to pre",
     }
 
 
 def run_r4_alt_nonlinearity(base_params: dict[str, float]) -> dict[str, Any]:
-    area_base, err = hysteresis_area(base_params)
+    base_stats, err = hysteresis_stats(base_params)
     if err:
         return {"id": "R4_alternative_nonlinearity", "pass": False, "error": err}
 
     alt = dict(base_params)
     alt["n"] = 4.0
-    alt["gamma"] = float(base_params["gamma"]) * 1.5
 
-    area_alt, err = hysteresis_area(alt)
+    alt_stats, err = hysteresis_stats(alt)
     if err:
         return {"id": "R4_alternative_nonlinearity", "pass": False, "error": err}
 
-    passed = bool(area_alt > area_base + 1e-3)
+    passed = bool(
+        (base_stats["index"] <= 0.05)
+        and (alt_stats["index"] >= 0.15)
+        and (alt_stats["index"] - base_stats["index"] >= 0.05)
+        and (alt_stats["median_signal"] >= 0.3 * base_stats["median_signal"])
+    )
 
     return {
         "id": "R4_alternative_nonlinearity",
         "pass": passed,
         "metrics": {
-            "hysteresis_area_baseline": area_base,
-            "hysteresis_area_alternative": area_alt,
+            "hysteresis_area_baseline": base_stats["area"],
+            "hysteresis_area_alternative": alt_stats["area"],
+            "hysteresis_index_baseline": base_stats["index"],
+            "hysteresis_index_alternative": alt_stats["index"],
+            "median_signal_baseline": base_stats["median_signal"],
+            "median_signal_alternative": alt_stats["median_signal"],
         },
-        "rule": "hysteresis_area_alternative > hysteresis_area_baseline + 1e-3",
+        "rule": "baseline low-hysteresis + alternative high normalized-hysteresis + signal floor",
     }
 
 

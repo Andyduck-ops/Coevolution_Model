@@ -24,14 +24,14 @@
 - [x] 生成 `results/repro/claim_report.json`
 - [x] 生成 `results/repro/ablation_report.json`
 - [x] 生成 `results/repro/paper_validation_report.json`
-- [ ] claim gate 通过（当前 E1/E2/E3/E4 未通过）
-- [ ] ablation gate 通过（当前 R2/R3/R4 未通过）
+- [x] claim gate 通过（当前 E1-E5 全通过）
+- [ ] ablation gate 通过（当前 R1-R4 未通过）
 - [ ] integrated paper gate 通过（当前为 false）
 
 ## 失败项与修复建议
-- 失败主因 1：当前“最佳实现”与论文命题方向不一致（例如 E1 应激单调律方向相反）。
-- 失败主因 2：`chi_eff` 与 `chi_c` 在默认参数下同为常零，导致 E4 无法给出唯一 crossing。
-- 失败主因 3：保真门禁与 claim/ablation 门禁都提示需要参数标定与模型结构细化。
+- 已修复：E1 单调方向、E4 crossing 计数、热力学阈值定义与核心 ODE 结构对齐后，claim gate 已转绿。
+- 当前主失败：ablation gate（R1-R4）与 repro fidelity gate（四图 composite<0.75）。
+- 后续建议：优先做 R3/R4 结构性修复（post 初值映射、替代非线性判据）与曲线级标定。
 
 ## 结论
 - [x] 通过

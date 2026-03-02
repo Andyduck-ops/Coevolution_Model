@@ -38,8 +38,8 @@ def x_coupling(params: dict[str, float], y_final: np.ndarray) -> float:
 
 def t95(t: np.ndarray, series: np.ndarray) -> float:
     target = float(series[-1])
-    threshold = 0.95 * target
-    idx = np.where(series >= threshold)[0]
+    tol = 0.05 * max(abs(target), abs(float(series[0]) - target), 1e-12)
+    idx = np.where(np.abs(series - target) <= tol)[0]
     if idx.size == 0:
         return float(t[-1])
     return float(t[int(idx[0])])
@@ -195,8 +195,8 @@ def run_e4_spinodal_crossing(base_params: dict[str, float]) -> dict[str, Any]:
                 "error": f"ode solve failed at stress_factor={sf}: {res.message}",
             }
 
-        r, p = float(res.y[0, -1]), float(res.y[1, -1])
-        chi_eff = float(chi_rp_eff(r, p, params))
+        x_bar, y_bar = float(res.y[2, -1]), float(res.y[3, -1])
+        chi_eff = float(chi_rp_eff(x_bar, y_bar, params))
         chi_c = float(chi_critical(params))
         diff = chi_eff - chi_c
 
@@ -204,12 +204,14 @@ def run_e4_spinodal_crossing(base_params: dict[str, float]) -> dict[str, Any]:
         chi_c_values.append(chi_c)
         diff_values.append(diff)
 
-    signs = np.sign(np.array(diff_values))
+    diff_arr = np.array(diff_values, dtype=float)
+    signs = np.sign(diff_arr)
+    eps = max(1e-14, 1e-6 * float(np.max(np.abs(diff_arr))))
+    signs[np.abs(diff_arr) <= eps] = 0.0
+    non_zero_signs = signs[signs != 0.0]
     crossing_count = 0
-    for i in range(len(signs) - 1):
-        if signs[i] == 0:
-            crossing_count += 1
-        elif signs[i] * signs[i + 1] < 0:
+    for i in range(len(non_zero_signs) - 1):
+        if non_zero_signs[i] * non_zero_signs[i + 1] < 0.0:
             crossing_count += 1
 
     passed = bool(crossing_count == 1)

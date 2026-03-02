@@ -9,7 +9,13 @@ from rna_llps.thermo.flory_huggins import chi_critical, chi_rp_eff
 
 
 def critical_stress(params: dict[str, float], r: float = 0.2, p: float = 0.1) -> float:
-    """Compute a critical stress proxy based on B_n and chi-thresholds."""
+    """Compute a critical stress proxy based on B_n and chi-thresholds.
+
+    Notes:
+        The function keeps legacy argument names ``r`` and ``p`` for API
+        compatibility. In the current paper-aligned thermo mapping they are
+        interpreted as trait placeholders ``x_bar`` and ``y_bar``.
+    """
     b_n = compute_bn(
         delta_0=float(params["delta_0"]),
         e_scale=float(params["E"]),
@@ -26,7 +32,7 @@ def compute_spinodal(
     p_range: tuple[float, float] = (0.0, 1.0),
     n_grid: int = 40,
 ) -> dict[str, np.ndarray | float]:
-    """Compute spinodal mask over (R, P) grid where chi_eff >= chi_critical."""
+    """Compute spinodal mask over grid where chi_eff >= chi_critical."""
     r_values = np.linspace(float(r_range[0]), float(r_range[1]), int(n_grid))
     p_values = np.linspace(float(p_range[0]), float(p_range[1]), int(n_grid))
     rr, pp = np.meshgrid(r_values, p_values, indexing="ij")

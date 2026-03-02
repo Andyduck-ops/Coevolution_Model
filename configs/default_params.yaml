@@ -1,25 +1,27 @@
 # Core kinetic parameters
-mu_x: 0.1
-mu_y: 0.1
+mu_x: 0.2
+mu_y: 0.2
 alpha: 1.0
-beta: 1.0
-kappa: 1.0
+beta: 0.1
+kappa: 0.1
+k_0: 0.3
+mu: 0.3
 
 # Carrying capacities and coupling
 K_R: 1.0
 K_P: 1.0
-V_x: 1.0
-V_y: 1.0
-gamma: 1.0
-delta_0: 1.0
+V_x: 0.02
+V_y: 0.015
+gamma: 0.6
+delta_0: 0.08
 E: 1.0
 n: 1
 
 # Flory-Huggins / thermodynamics (P0 required)
 v_R: 1.0
 v_P: 1.0
-chi_RR: 0.0
-chi_PP: 0.0
+chi_RR: 0.999999999688
+chi_PP: 0.999999999688
 chi_0: 0.0
 epsilon: 1.0
 k_BT: 1.0

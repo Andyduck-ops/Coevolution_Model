@@ -14,6 +14,8 @@ def sample_params_dict() -> dict[str, float]:
         "alpha": 1.0,
         "beta": 1.0,
         "kappa": 1.0,
+        "k_0": 0.3,
+        "mu": 0.1,
         "K_R": 1.0,
         "K_P": 1.0,
         "V_x": 1.0,
