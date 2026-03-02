@@ -35,6 +35,9 @@ bash .harness/scripts/run_quality_gate.sh
 
 # 复现检查
 .venv/bin/python scripts/check_reproduction_metrics.py --fig-dir figures/paper --out results/repro/repro_report.json --strict
+
+# 若有论文原图目录（如 COPY1__...），启用保真校验
+.venv/bin/python scripts/check_reproduction_metrics.py --fig-dir figures/paper --out results/repro/repro_report.json --strict --require-fidelity --reference-dir "COPY1__.../"
 ```
 
 ## Harness 入口

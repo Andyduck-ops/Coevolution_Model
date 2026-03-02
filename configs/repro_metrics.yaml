@@ -1,0 +1,14 @@
+required_figures:
+  - fig1_stability
+  - fig2_timecourse
+  - fig3_spinodal
+  - fig4_post_segregation
+
+reference_mapping:
+  fig1_stability: fig1.png
+  fig2_timecourse: fig2.png
+  fig3_spinodal: fig3.png
+  fig4_post_segregation: fig4.png
+
+fidelity:
+  composite_threshold: 0.75

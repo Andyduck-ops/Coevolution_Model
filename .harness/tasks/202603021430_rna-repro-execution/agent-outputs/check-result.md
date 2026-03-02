@@ -15,6 +15,11 @@
 - [x] `figures/paper/fig4_post_segregation.(png|pdf)`
 - [x] `results/repro/repro_report.json`（`passed=true`）
 
+## 保真校验（新增）
+- [x] 已支持 `--require-fidelity` 图像保真门禁（参考图自动探测/显式指定）
+- [ ] 当前阈值 `composite>=0.75` 未通过（四图约 `0.686~0.713`）
+- [ ] 需要下一轮进行参数标定/曲线拟合后再复核
+
 ## 失败项与修复建议
 - 无阻断失败。
 
