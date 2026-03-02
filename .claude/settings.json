@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "python3 .harness/hooks/session-start.py",
+        "guard": "[ -d .harness ]"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "command": "python3 .harness/hooks/inject-context.py",
+        "guard": "[ -d .harness ]"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "command": "python3 .harness/hooks/track-staleness.py",
+        "guard": "[ -d .harness ]"
+      }
+    ],
+    "SubagentStop": [
+      {
+        "command": "python3 .harness/hooks/quality-gate.py",
+        "guard": "[ -d .harness ]"
+      }
+    ]
+  }
+}

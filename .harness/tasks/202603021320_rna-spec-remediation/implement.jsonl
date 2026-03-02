@@ -1,0 +1,6 @@
+{"file":"spec/lessons/index.md","reason":"执行补丁框架"}
+{"file":"spec/math/index.md","reason":"数学P0项"}
+{"file":"spec/backend/index.md","reason":"数值实现规范"}
+{"file":"spec/figures/index.md","reason":"图表复现规范"}
+{"file":"spec/reproducibility/index.md","reason":"学术复现规范"}
+{"file":".harness/tasks/202603021320_rna-spec-remediation/prd.md","reason":"当前任务要求"}

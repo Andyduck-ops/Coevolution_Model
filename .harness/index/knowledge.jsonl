@@ -1,0 +1,5 @@
+{"type":"system","name":"harness-init","desc":"RNA LLPS harness initialized","tags":["meta","harness"],"created":"2026-03-02"}
+{"type":"spec","path":"spec/math/index.md","desc":"数学规范与P0/P1缺口"}
+{"type":"spec","path":"spec/backend/index.md","desc":"后端数值实现规范"}
+{"type":"spec","path":"spec/figures/index.md","desc":"图表复现规范"}
+{"type":"spec","path":"spec/reproducibility/index.md","desc":"论文复现与合规规范"}

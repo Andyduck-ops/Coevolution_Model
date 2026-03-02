@@ -1,0 +1,3 @@
+{"file":".harness/workflow.md","reason":"验证命令"}
+{"file":"spec/lessons/DECODE.md","reason":"验证信号校验"}
+{"file":"spec/lessons/ESCAPE.md","reason":"失败循环处理"}
