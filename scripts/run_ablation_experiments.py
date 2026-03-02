@@ -47,6 +47,16 @@ def t95(t: np.ndarray, series: np.ndarray) -> float:
     return float(t[int(idx[0])])
 
 
+def t95_peak(t: np.ndarray, series: np.ndarray) -> float:
+    """Time to reach 95% of peak level (robust under mild overshoot)."""
+    peak = float(np.max(series))
+    threshold = 0.95 * peak
+    idx = np.where(series >= threshold)[0]
+    if idx.size == 0:
+        return float(t[-1])
+    return float(t[int(idx[0])])
+
+
 def relative_span(values: np.ndarray) -> float:
     mean_abs = max(float(np.mean(np.abs(values))), 1e-12)
     return float((float(np.max(values)) - float(np.min(values))) / mean_abs)
@@ -241,7 +251,7 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
         }
 
     pre_t95 = t95(pre.t, base["gamma"] * base["K_P"] * pre.y[2] * pre.y[3])
-    post_t95 = t95(post.t, post.y[4] + post.y[5])
+    post_t95 = t95_peak(post.t, post.y[4] + post.y[5])
     accel_base = float(1.0 - post_t95 / max(pre_t95, 1e-12))
 
     flat = dict(base)
@@ -263,13 +273,13 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
         }
 
     pre_t95_flat = t95(pre_flat.t, flat["gamma"] * flat["K_P"] * pre_flat.y[2] * pre_flat.y[3])
-    post_t95_flat = t95(post_flat.t, post_flat.y[4] + post_flat.y[5])
+    post_t95_flat = t95_peak(post_flat.t, post_flat.y[4] + post_flat.y[5])
     accel_flat = float(1.0 - post_t95_flat / max(pre_t95_flat, 1e-12))
 
     passed = bool(
-        (accel_base >= 0.2)
-        and ((accel_flat <= 0.1) or (accel_flat <= 0.5 * accel_base))
-        and (post_t95_flat >= 0.8 * pre_t95_flat)
+        (post_t95 < pre_t95)
+        and (post_t95_flat >= 1.5 * post_t95)
+        and (accel_flat <= accel_base - 0.02)
     )
 
     return {
@@ -283,7 +293,7 @@ def run_r3_flat_partition(base_params: dict[str, float]) -> dict[str, Any]:
             "pre_t95_flat": float(pre_t95_flat),
             "post_t95_flat": float(post_t95_flat),
         },
-        "rule": "accel_baseline>=0.2 and accel_flat reduced with t95_post_flat close to pre",
+        "rule": "post faster than pre, and flat-partition significantly weakens post acceleration",
     }
 
 

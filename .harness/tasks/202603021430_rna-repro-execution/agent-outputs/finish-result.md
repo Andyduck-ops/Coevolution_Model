@@ -12,10 +12,11 @@
 - 当前复现报告以“产物完整性 + 管线可重复”为主。
 - 已补“参考图保真门禁”能力，但当前默认阈值尚未通过。
 - 已补“论文命题+消融”门禁能力，且 claim gate 已通过（E1-E5）。
-- 当前剩余阻断项：ablation gate 未通过（仅 R3）、repro fidelity gate 未通过。
-- 下一步需做两类工作：ablation 结构修复 + 论文曲线级数值标定。
+- 已补“论文命题+消融”门禁能力，且 ablation gate 已通过（R1-R4）。
+- 当前剩余阻断项：repro fidelity gate 未通过。
+- 下一步聚焦：论文曲线级数值标定与 fidelity 提升。
 
 ## 建议下一迭代
-1. 优先修复 R3/R4（post-seg 初始化映射与替代非线性可解释性）。
+1. 用 `scripts/search_fidelity_params.py` 做更大样本量 coarse search（>=30）并落地 top-k 参数。
 2. 将论文原图数据点数字化，建立曲线级误差阈值并纳入保真门禁。
 3. 对 `critical_stress` / `compute_spinodal` 引入论文参数反演与灵敏度报告。

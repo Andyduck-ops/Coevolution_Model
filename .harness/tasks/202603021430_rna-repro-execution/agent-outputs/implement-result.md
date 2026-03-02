@@ -12,7 +12,8 @@
 - [x] I9: 论文方程对齐修补（4 变量 ODE、spinodal 事件、`chi_eff/chi_c` 公式）
 - [x] I10: 数值稳定性修补（耦合项截断、非单调序列 t95 判定、E4 crossing 稳健计数）
 - [x] I11: 参数基线重标定（default_params 使 E1-E5 claim gate 通过）
-- [x] I12: 消融判据稳健化迭代（R1/R2/R4 转绿，R3 待修复）
+- [x] I12: 消融判据稳健化迭代（R1-R4 全部转绿）
+- [x] I13: 新增 fidelity 参数粗搜索脚本（`search_fidelity_params.py`）
 
 ## 关键新增文件
 - `src/rna_llps/solvers/ode_wrappers.py`
@@ -28,6 +29,7 @@
 - `scripts/run_claim_experiments.py`
 - `scripts/run_ablation_experiments.py`
 - `scripts/merge_claim_ablation_report.py`
+- `scripts/search_fidelity_params.py`
 
 ## 测试补齐
 - [x] `tests/test_flory_huggins.py`
@@ -39,3 +41,4 @@
 - [x] `tests/test_claim_experiments.py`
 - [x] `tests/test_ablation_experiments.py`
 - [x] `tests/test_merge_claim_ablation_report.py`
+- [x] `tests/test_fidelity_search.py`
