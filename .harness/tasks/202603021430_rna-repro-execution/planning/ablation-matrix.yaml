@@ -1,0 +1,63 @@
+claims:
+  - id: E1_monotonic_X_vs_stress
+    hypothesis: 应激B增大导致X*单调上升
+    script: scripts/run_claim_experiments.py
+    key_metric: spearman_rho_X_B
+    pass_rule: spearman_rho_X_B > 0 and p_value < 0.05
+
+  - id: E2_global_stability_no_hysteresis
+    hypothesis: X*唯一全局稳定且无明显滞后
+    script: scripts/run_claim_experiments.py
+    key_metric: terminal_variance_and_hysteresis_area
+    pass_rule: terminal_variance < 1e-6 and hysteresis_area < 1e-3
+
+  - id: E3_growth_function_decoupling
+    hypothesis: R/P饱和但X继续演化
+    script: scripts/run_claim_experiments.py
+    key_metric: delta_X_vs_delta_RP
+    pass_rule: delta_X > 0 and delta_RP_near_plateau
+
+  - id: E4_spinodal_crossing
+    hypothesis: 存在临界应激Bc触发chi_eff-crossing
+    script: scripts/run_claim_experiments.py
+    key_metric: crossing_exists_and_unique
+    pass_rule: crossing_count == 1
+
+  - id: E5_post_seg_acceleration
+    hypothesis: 分相后A_eff/X_loc提升导致演化加速
+    script: scripts/run_claim_experiments.py
+    key_metric: t95_pre_vs_post
+    pass_rule: t95_post < t95_pre
+
+ablations:
+  - id: R1_remove_mutualism
+    kind: ablation
+    change: beta=0,kappa=0
+    expected_if_claim_true: X提升显著减弱
+    fail_signal: X*与基线差异很小
+
+  - id: R2_weaken_stress_selection
+    kind: ablation
+    change: B_n固定或显著减弱
+    expected_if_claim_true: X-B单调性被破坏
+    fail_signal: 仍保持强单调且幅度不变
+
+  - id: R3_flat_partition
+    kind: ablation
+    change: Pi_P=constant
+    expected_if_claim_true: post-seg加速效应消失
+    fail_signal: t95_post仍明显快于pre
+
+  - id: R4_alternative_nonlinearity
+    kind: rebuttal
+    change: 引入替代非线性检查滞后敏感性
+    expected_if_claim_true: 标准模型无滞后、替代模型可出现滞后
+    fail_signal: 两者无可区分差异
+
+review_contract:
+  implementer: gpt-5.2-xhigh-implementer
+  reviewer: gpt-5.2-xhigh-reviewer
+  required_reports:
+    - results/repro/claim_report.json
+    - results/repro/ablation_report.json
+    - results/repro/paper_validation_report.json

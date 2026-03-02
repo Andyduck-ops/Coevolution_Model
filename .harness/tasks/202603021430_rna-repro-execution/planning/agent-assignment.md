@@ -4,8 +4,10 @@
 
 | 角色 | 阶段 | 关键输出 | 强制门禁 |
 |---|---|---|---|
-| plan-agent | plan | `prd.md`、`task.json`、`planning/execution-dag.yaml` | `schedule-audit` |
+| plan-agent | plan | `prd.md`、`task.json`、`planning/execution-dag.yaml`、`planning/experiment-dag-claims-ablation.yaml` | `schedule-audit` |
 | implement-agent | implement | `agent-outputs/implement-result.md` + 代码/测试变更 | 单元测试 + lint |
+| ablation-agent | implement | `scripts/run_ablation_experiments.py` + `results/repro/ablation_report.json` | `C4_ablation_gate` |
+| claim-agent | implement | `scripts/run_claim_experiments.py` + `results/repro/claim_report.json` | `C3_claim_gate` |
 | check-agent | check | `agent-outputs/check-result.md`（6项命令全量） | `run_quality_gate.sh` |
 | gpt-5.2-xhigh-reviewer | review | `evidence/review_meta.json` + 结论 | `review-audit` |
 | ops-agent | governance | 统一审计报告写入 `evidence/*.json` | `opsctl governance-check --strict` |

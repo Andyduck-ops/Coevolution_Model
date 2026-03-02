@@ -1,0 +1,112 @@
+meta:
+  id: RNA-PAPER-CLAIMS-ABLATION-V1
+  task_dir: .harness/tasks/202603021430_rna-repro-execution
+  objective: 论文命题验证 + 反驳实验 + 模拟闭环
+
+plan:
+  - id: P3_claim_mapping
+    owner: plan-agent
+    goal: 将论文核心命题映射为可计算指标
+    outputs:
+      - planning/tasks-claims-ablation.md
+      - planning/ablation-matrix.yaml
+    verify:
+      - test -f .harness/tasks/202603021430_rna-repro-execution/planning/tasks-claims-ablation.md
+      - test -f .harness/tasks/202603021430_rna-repro-execution/planning/ablation-matrix.yaml
+
+implement:
+  - id: I6_claim_runner
+    owner: implement-agent
+    needs: [P3_claim_mapping]
+    goal: 实现命题实验统一执行器
+    outputs:
+      - scripts/run_claim_experiments.py
+      - tests/test_claim_experiments.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_claim_experiments.py
+
+  - id: I7_ablation_runner
+    owner: implement-agent
+    needs: [I6_claim_runner]
+    goal: 实现消融/反驳实验执行器
+    outputs:
+      - scripts/run_ablation_experiments.py
+      - tests/test_ablation_experiments.py
+    verify:
+      - .venv/bin/python -m pytest -q tests/test_ablation_experiments.py
+
+  - id: I8_report_merge
+    owner: implement-agent
+    needs: [I6_claim_runner, I7_ablation_runner]
+    goal: 生成统一论文验证报告
+    outputs:
+      - scripts/merge_claim_ablation_report.py
+      - results/repro/claim_report.json
+      - results/repro/ablation_report.json
+      - results/repro/paper_validation_report.json
+    verify:
+      - .venv/bin/python scripts/merge_claim_ablation_report.py --strict
+
+check:
+  - id: C3_claim_gate
+    owner: check-agent
+    needs: [I8_report_merge]
+    goal: 核心命题门禁
+    verify:
+      - .venv/bin/python scripts/run_claim_experiments.py --config configs/default_params.yaml --out results/repro/claim_report.json --strict
+
+  - id: C4_ablation_gate
+    owner: check-agent
+    needs: [I8_report_merge]
+    goal: 反驳/消融门禁
+    verify:
+      - .venv/bin/python scripts/run_ablation_experiments.py --config configs/default_params.yaml --out results/repro/ablation_report.json --strict
+
+  - id: C5_integrated_gate
+    owner: check-agent
+    needs: [C3_claim_gate, C4_ablation_gate]
+    goal: 工程+治理+论文验证一体门禁
+    verify:
+      - .venv/bin/python scripts/merge_claim_ablation_report.py --strict
+      - bash .harness/scripts/run_quality_gate.sh
+      - bash .harness/scripts/opsctl.sh governance-check --strict
+
+debug:
+  - id: D3_claim_fix
+    owner: debug-agent
+    trigger: C3_claim_gate_failed
+    verify:
+      - .venv/bin/python scripts/run_claim_experiments.py --config configs/default_params.yaml --out results/repro/claim_report.json --strict
+
+  - id: D4_ablation_fix
+    owner: debug-agent
+    trigger: C4_ablation_gate_failed
+    verify:
+      - .venv/bin/python scripts/run_ablation_experiments.py --config configs/default_params.yaml --out results/repro/ablation_report.json --strict
+
+review:
+  - id: R1_peer_review
+    owner: gpt-5.2-xhigh-reviewer
+    needs: [C5_integrated_gate]
+    outputs:
+      - evidence/review_meta.json
+      - agent-outputs/check-result.md
+      - agent-outputs/finish-result.md
+    verify:
+      - bash .harness/scripts/opsctl.sh review-audit
+
+finish:
+  - id: F2_paper_validation_release
+    owner: finish-agent
+    needs: [R1_peer_review]
+    outputs:
+      - results/repro/paper_validation_report.json
+      - README.md
+    verify:
+      - bash .harness/scripts/opsctl.sh governance-check --strict
+
+stop_conditions:
+  - id: stop_ready
+    rule: C5_integrated_gate_pass && R1_peer_review_pass
+  - id: escalate_human
+    rule: same_failure_class_ge_3 || claim_conflict_unresolved

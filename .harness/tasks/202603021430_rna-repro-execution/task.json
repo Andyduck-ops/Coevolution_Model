@@ -1,12 +1,14 @@
 {
   "id": "202603021430_rna-repro-execution",
   "title": "RNA paper reproduction execution pipeline",
-  "status": "check_passed",
+  "status": "in_progress_claim_ablation",
   "createdAt": "2026-03-02",
   "owner": "gpt-5.2-xhigh",
   "agents": {
     "plan": "plan-agent",
     "implementer": "gpt-5.2-xhigh-implementer",
+    "claim": "claim-agent",
+    "ablation": "ablation-agent",
     "checker": "check-agent",
     "reviewer": "gpt-5.2-xhigh-reviewer",
     "ops": "ops-agent",
