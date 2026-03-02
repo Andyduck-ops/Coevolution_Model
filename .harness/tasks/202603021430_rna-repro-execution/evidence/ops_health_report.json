@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "type": "health",
+  "checks": [
+    {
+      "name": "hooks-config-codex",
+      "ok": true,
+      "detail": ".codex/config.toml must exist for codex hook runtime",
+      "severity": "error"
+    },
+    {
+      "name": "hook-file:session-start.py",
+      "ok": true,
+      "detail": ".harness/hooks/session-start.py",
+      "severity": "error"
+    },
+    {
+      "name": "hook-file:inject-context.py",
+      "ok": true,
+      "detail": ".harness/hooks/inject-context.py",
+      "severity": "error"
+    },
+    {
+      "name": "hook-file:track-staleness.py",
+      "ok": true,
+      "detail": ".harness/hooks/track-staleness.py",
+      "severity": "error"
+    },
+    {
+      "name": "hook-file:quality-gate.py",
+      "ok": true,
+      "detail": ".harness/hooks/quality-gate.py",
+      "severity": "error"
+    },
+    {
+      "name": "current-task",
+      "ok": true,
+      "detail": ".harness/.current-task should point to active task directory",
+      "severity": "error"
+    },
+    {
+      "name": "venv-python",
+      "ok": true,
+      "detail": ".venv/bin/python is required for local ops pipeline",
+      "severity": "error"
+    },
+    {
+      "name": "workflow-verify-commands",
+      "ok": true,
+      "detail": "detected 7/7 verification commands",
+      "severity": "error"
+    }
+  ]
+}

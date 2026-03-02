@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "type": "schedule-audit",
+  "findings": [],
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "stages": {
+      "plan": true,
+      "implement": true,
+      "check": true,
+      "debug": true,
+      "finish": true
+    }
+  }
+}

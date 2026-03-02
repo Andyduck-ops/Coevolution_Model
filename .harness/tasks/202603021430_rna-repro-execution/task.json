@@ -1,7 +1,7 @@
 {
   "id": "202603021430_rna-repro-execution",
   "title": "RNA paper reproduction execution pipeline",
-  "status": "planned",
+  "status": "check_passed",
   "createdAt": "2026-03-02",
   "owner": "gpt-5.2-xhigh",
   "agents": {

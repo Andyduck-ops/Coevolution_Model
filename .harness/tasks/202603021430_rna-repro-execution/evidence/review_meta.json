@@ -2,9 +2,11 @@
   "implementer": "gpt-5.2-xhigh-implementer",
   "reviewer": "gpt-5.2-xhigh-reviewer",
   "review_scope": [
-    "harness governance",
-    "spec remediation",
-    "automation pipeline"
+    "ODE wrappers",
+    "thermodynamics",
+    "post-segregation",
+    "stability analysis",
+    "figure reproduction scripts"
   ],
-  "review_time_utc": "1970-01-01T00:00:00Z"
+  "review_time_utc": "2026-03-02T06:35:00Z"
 }

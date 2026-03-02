@@ -10,7 +10,11 @@ from rna_llps.pipeline.smoke import run_smoke
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run RNA LLPS E2E smoke simulation.")
-    parser.add_argument("--config", default="configs/default_params.yaml", help="Path to YAML config")
+    parser.add_argument(
+        "--config",
+        default="configs/default_params.yaml",
+        help="Path to YAML config",
+    )
     parser.add_argument("--output", default="results/smoke", help="Output directory for NPZ/JSON")
     parser.add_argument("--figures", default="figures/smoke", help="Output directory for figures")
     parser.add_argument("--t-end", type=float, default=40.0, help="Integration end time")

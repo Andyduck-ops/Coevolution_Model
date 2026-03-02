@@ -10,7 +10,8 @@
 - [x] 建立 E2E smoke 链路（参数加载→最小 ODE→产图）
 - [x] 建立任务拆分方法卡与治理分配模板（多 Agent 审核闭环）
 - [x] 启动下一阶段任务包：`202603021430_rna-repro-execution`
-- [ ] 补齐 spec P0 条目并进入论文模型实现
+- [x] 补齐 spec P0/P1 对应实现（ODE包装+热力学+两相链路+稳定性分析）
+- [x] 生成 Fig1-4 双格式图表与复现检查报告
 
 ## 快速开始
 
@@ -25,6 +26,15 @@ bash .harness/scripts/run_quality_gate.sh
 
 ```bash
 .venv/bin/python scripts/e2e_smoke.py --config configs/default_params.yaml
+
+# 生成 Fig1-4
+.venv/bin/python scripts/fig1_stability.py --config configs/default_params.yaml --out figures/paper
+.venv/bin/python scripts/fig2_timecourse.py --config configs/default_params.yaml --out figures/paper
+.venv/bin/python scripts/fig3_spinodal.py --config configs/default_params.yaml --out figures/paper
+.venv/bin/python scripts/fig4_post_segregation.py --config configs/default_params.yaml --out figures/paper
+
+# 复现检查
+.venv/bin/python scripts/check_reproduction_metrics.py --fig-dir figures/paper --out results/repro/repro_report.json --strict
 ```
 
 ## Harness 入口
