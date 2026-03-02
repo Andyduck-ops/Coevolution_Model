@@ -12,7 +12,7 @@
 - 当前复现报告以“产物完整性 + 管线可重复”为主。
 - 已补“参考图保真门禁”能力，但当前默认阈值尚未通过。
 - 已补“论文命题+消融”门禁能力，且 claim gate 已通过（E1-E5）。
-- 当前剩余阻断项：ablation gate 未通过、repro fidelity gate 未通过。
+- 当前剩余阻断项：ablation gate 未通过（仅 R3）、repro fidelity gate 未通过。
 - 下一步需做两类工作：ablation 结构修复 + 论文曲线级数值标定。
 
 ## 建议下一迭代

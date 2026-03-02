@@ -41,7 +41,10 @@ def post_segregation_rhs(t: float, y: np.ndarray, params: dict[str, float]) -> n
 
     tau_r = 0.2
     tau_p = 0.2
-    tau_x = 0.15
+    # Couple local adaptation speed to attraction strength.
+    # Higher epsilon (stronger partition driving) => faster trait relaxation.
+    epsilon = max(float(params.get("epsilon", 0.0)), 0.0)
+    tau_x = 0.15 / (1.0 + 0.8 * epsilon)
 
     dr_i = (aux.w_i * r_tot - r_i) / tau_r
     dr_ii = (aux.w_ii * r_tot - r_ii) / tau_r

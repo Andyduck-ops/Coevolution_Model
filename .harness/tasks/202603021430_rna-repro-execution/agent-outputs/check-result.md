@@ -25,13 +25,13 @@
 - [x] 生成 `results/repro/ablation_report.json`
 - [x] 生成 `results/repro/paper_validation_report.json`
 - [x] claim gate 通过（当前 E1-E5 全通过）
-- [ ] ablation gate 通过（当前 R1-R4 未通过）
+- [ ] ablation gate 通过（当前 R1/R2/R4 通过，R3 未通过）
 - [ ] integrated paper gate 通过（当前为 false）
 
 ## 失败项与修复建议
 - 已修复：E1 单调方向、E4 crossing 计数、热力学阈值定义与核心 ODE 结构对齐后，claim gate 已转绿。
-- 当前主失败：ablation gate（R1-R4）与 repro fidelity gate（四图 composite<0.75）。
-- 后续建议：优先做 R3/R4 结构性修复（post 初值映射、替代非线性判据）与曲线级标定。
+- 当前主失败：ablation gate（仅 R3 失败）与 repro fidelity gate（四图 composite<0.75）。
+- 后续建议：聚焦 R3 的 post-seg 机制一致性修复与 Fig1-4 曲线级标定。
 
 ## 结论
 - [x] 通过
