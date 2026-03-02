@@ -1,0 +1,51 @@
+contract_id: RNA-OPS-PIPELINE
+version: 0.1.0
+
+stages:
+  - id: plan
+    requires: []
+    required_artifacts:
+      - path: prd.md
+        min_chars: 100
+      - path: task.json
+        min_chars: 20
+
+  - id: implement
+    requires: [plan]
+    required_artifacts:
+      - path: agent-outputs/implement-result.md
+        min_chars: 80
+
+  - id: check
+    requires: [implement]
+    required_artifacts:
+      - path: agent-outputs/check-result.md
+        min_chars: 80
+      - path: evidence/ops_health_report.json
+        min_chars: 20
+      - path: evidence/spec_audit_report.json
+        min_chars: 20
+
+  - id: debug
+    requires: [check]
+    optional: true
+    required_artifacts:
+      - path: agent-outputs/debug-result.md
+        min_chars: 20
+
+  - id: finish
+    requires: [check]
+    optional: true
+    required_artifacts:
+      - path: agent-outputs/finish-result.md
+        min_chars: 20
+
+parallel_groups:
+  - name: analysis-lane
+    members: [claim_agent, evidence_agent, stats_agent]
+
+stop_conditions:
+  - id: stop_ready
+    rule: "plan/implement/check required artifacts all pass and no critical audit findings"
+  - id: escalate_human
+    rule: "same failure class >= 3"

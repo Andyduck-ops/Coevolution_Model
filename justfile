@@ -21,6 +21,9 @@ hook-replay:
 ops:
     bash .harness/scripts/opsctl.sh full-check --strict
 
-check: lint test build e2e hook-replay ops
+governance:
+    bash .harness/scripts/opsctl.sh governance-check --strict
+
+check: lint test build e2e hook-replay governance
 
 all: bootstrap check

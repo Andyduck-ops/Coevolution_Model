@@ -1,0 +1,10 @@
+{
+  "implementer": "claude-agent",
+  "reviewer": "rna-review-agent",
+  "review_scope": [
+    "harness governance",
+    "spec remediation",
+    "automation pipeline"
+  ],
+  "review_time_utc": "2026-03-02T06:20:00Z"
+}

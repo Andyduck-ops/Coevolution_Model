@@ -1,4 +1,4 @@
-.PHONY: bootstrap lint test build e2e hook-replay ops check all
+.PHONY: bootstrap lint test build e2e hook-replay ops governance check all
 
 bootstrap:
 	bash .harness/scripts/bootstrap_env.sh
@@ -21,6 +21,9 @@ hook-replay:
 ops:
 	bash .harness/scripts/opsctl.sh full-check --strict
 
-check: lint test build e2e hook-replay ops
+governance:
+	bash .harness/scripts/opsctl.sh governance-check --strict
+
+check: lint test build e2e hook-replay governance
 
 all: bootstrap check

@@ -17,7 +17,7 @@ bash .harness/scripts/bootstrap_env.sh
 bash .harness/scripts/run_quality_gate.sh
 ```
 
-该质量门会自动执行：lint + test + build + e2e + hook replay + ops full-check。
+该质量门会自动执行：lint + test + build + e2e + hook replay + governance-check。
 
 或分步执行：
 
@@ -44,3 +44,7 @@ bash .harness/scripts/run_quality_gate.sh
 bash .harness/scripts/opsctl.sh full-check
 ```
 
+
+```bash
+bash .harness/scripts/opsctl.sh governance-check --strict
+```

@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "type": "review-audit",
+  "findings": [],
+  "summary": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

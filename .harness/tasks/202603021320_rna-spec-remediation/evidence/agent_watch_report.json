@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "type": "agent-audit",
+  "snapshot": {
+    "task_dir": ".harness/tasks/202603021320_rna-spec-remediation",
+    "time_utc": "2026-03-02T06:05:15.766213+00:00",
+    "health_ok": true,
+    "spec_ok": true,
+    "review_ok": true,
+    "schedule_ok": true,
+    "check_pass": true
+  },
+  "actions": [
+    "stop_ready"
+  ],
+  "findings": []
+}
