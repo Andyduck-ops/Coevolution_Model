@@ -6,3 +6,4 @@
 {"type":"spec","path":"spec/operations/permission-ladder.md","desc":"权限阶梯与结构化升级"}
 {"type":"spec","path":"spec/operations/reference-sync.md","desc":"上游harness references 同步策略"}
 {"type":"spec","path":"spec/operations/ops-manager.md","desc":"本地运维控制面说明"}
+{"type":"spec","path":"spec/operations/methodology-cases.md","desc":"references案例方法论到本项目的映射"}

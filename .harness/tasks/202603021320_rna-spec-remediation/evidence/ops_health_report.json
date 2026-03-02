@@ -47,7 +47,7 @@
     {
       "name": "workflow-verify-commands",
       "ok": true,
-      "detail": "detected 4/4 verification commands",
+      "detail": "detected 6/6 verification commands",
       "severity": "error"
     }
   ]

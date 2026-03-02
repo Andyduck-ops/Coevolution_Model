@@ -10,5 +10,7 @@ fi
 ".venv/bin/python" -m pytest -q
 ".venv/bin/python" -m compileall -q src
 bash .harness/scripts/e2e_smoke.sh
+bash .harness/scripts/hook_replay.sh
+bash .harness/scripts/opsctl.sh full-check --strict
 
 echo "[OK] quality gate passed"

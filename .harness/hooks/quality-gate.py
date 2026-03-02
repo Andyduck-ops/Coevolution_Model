@@ -85,7 +85,7 @@ def get_verify_commands(harness_dir: Path) -> list[str]:
     if not workflow.is_file():
         return []
 
-    keys = ("- **Test**:", "- **Lint**:", "- **Build**:", "- **E2E Smoke**:")
+    keys = ("- **Test**:", "- **Lint**:", "- **Build**:", "- **E2E Smoke**:", "- **Hook Replay**:", "- **Ops Full Check**:")
     commands: list[str] = []
 
     for raw in workflow.read_text(encoding="utf-8").splitlines():

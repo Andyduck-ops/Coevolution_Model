@@ -17,6 +17,8 @@ bash .harness/scripts/bootstrap_env.sh
 bash .harness/scripts/run_quality_gate.sh
 ```
 
+该质量门会自动执行：lint + test + build + e2e + hook replay + ops full-check。
+
 或分步执行：
 
 ```bash
@@ -35,3 +37,10 @@ bash .harness/scripts/run_quality_gate.sh
 
 `/home/eric/harness/references/` 是上游系统管理知识库；
 本项目以 `.harness/spec/` 作为落地执行层，并按里程碑进行对照同步。
+
+## 运维与审计
+
+```bash
+bash .harness/scripts/opsctl.sh full-check
+```
+

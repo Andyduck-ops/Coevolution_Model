@@ -15,6 +15,12 @@ build:
 e2e:
     bash .harness/scripts/e2e_smoke.sh
 
-check: lint test build e2e
+hook-replay:
+    bash .harness/scripts/hook_replay.sh
+
+ops:
+    bash .harness/scripts/opsctl.sh full-check --strict
+
+check: lint test build e2e hook-replay ops
 
 all: bootstrap check

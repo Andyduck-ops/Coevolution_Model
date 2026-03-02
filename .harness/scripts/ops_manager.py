@@ -92,14 +92,22 @@ def run_health() -> tuple[bool, dict[str, Any]]:
     verify_count = 0
     if workflow.is_file():
         text = workflow.read_text(encoding="utf-8")
-        for key in ["- **Test**:", "- **Lint**:", "- **Build**:", "- **E2E Smoke**:"]:
+        expected_keys = [
+            "- **Test**:",
+            "- **Lint**:",
+            "- **Build**:",
+            "- **E2E Smoke**:",
+            "- **Hook Replay**:",
+            "- **Ops Full Check**:",
+        ]
+        for key in expected_keys:
             if key in text:
                 verify_count += 1
     checks.append(
         CheckResult(
             name="workflow-verify-commands",
-            ok=verify_count >= 4,
-            detail=f"detected {verify_count}/4 verification commands",
+            ok=verify_count >= 6,
+            detail=f"detected {verify_count}/6 verification commands",
         )
     )
 

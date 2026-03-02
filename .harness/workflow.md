@@ -15,6 +15,7 @@
 - **Lint**: `.venv/bin/python -m ruff check src tests`
 - **Build**: `.venv/bin/python -m compileall -q src`
 - **E2E Smoke**: `bash .harness/scripts/e2e_smoke.sh`
+- **Hook Replay**: `bash .harness/scripts/hook_replay.sh`
 - **Ops Full Check**: `bash .harness/scripts/opsctl.sh full-check`
 
 ## Pipeline Stages
