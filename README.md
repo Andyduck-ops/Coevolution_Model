@@ -28,7 +28,8 @@ bash .harness/scripts/run_quality_gate.sh
 - 工作流：`.harness/workflow.md`
 - 当前任务：`.harness/.current-task`
 - 核心规范：`.harness/spec/`
-- Hook 配置：`.claude/settings.json`
+- Hook 配置（Codex 版）：`.codex/config.toml`
+- 兼容配置（可选）：`.claude/settings.json`
 
 ## 关于规范来源
 

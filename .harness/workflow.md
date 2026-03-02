@@ -15,6 +15,7 @@
 - **Lint**: `.venv/bin/python -m ruff check src tests`
 - **Build**: `.venv/bin/python -m compileall -q src`
 - **E2E Smoke**: `bash .harness/scripts/e2e_smoke.sh`
+- **Ops Full Check**: `bash .harness/scripts/opsctl.sh full-check`
 
 ## Pipeline Stages
 
@@ -52,3 +53,10 @@ plan → implement → check → [debug ≤3] → finish
 1. 先修补 RNA 模型 spec 的 P0 缺口（参数、两相辅助链、依赖版本）。
 2. 再搭脚手架并逐步实现 ODE/热力学/图表复现模块。
 3. 以论文复现为目标，执行端到端可验证流水线。
+
+
+## Ops Control Plane
+
+- health: `bash .harness/scripts/opsctl.sh health`
+- spec audit: `bash .harness/scripts/opsctl.sh spec-audit`
+- full check: `bash .harness/scripts/opsctl.sh full-check`

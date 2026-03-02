@@ -1,26 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""SubagentStop hook — quality gate enforcement.
+"""SubagentStop hook: enforce failure budget and verification commands."""
 
-Derived from Trellis ralph-loop.py (battle-tested quality gate).
-
-Triggered on: SubagentStop (when any subagent finishes)
-Enforces:
-- Verification commands must pass (not just be mentioned)
-- Failure budget tracking (≤3 same-type failures)
-- Per-task state isolation (F4 feature)
-- State timeout (30 min staleness reset)
-
-Key patterns from ralph-loop:
-- Run verify commands externally, don't trust agent self-report
-- Per-task state file (not global — parallel safe)
-- Atomic state writes (temp + rename)
-- MAX_ITERATIONS safety limit
-"""
-
-# IMPORTANT: Suppress all warnings FIRST
-import warnings
-warnings.filterwarnings("ignore")
+from __future__ import annotations
 
 import json
 import os
@@ -29,82 +11,39 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# IMPORTANT: Force stdout to use UTF-8 on Windows
-if sys.platform == "win32":
-    import io as _io
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    elif hasattr(sys.stdout, "detach"):
-        sys.stdout = _io.TextIOWrapper(
-            sys.stdout.detach(), encoding="utf-8", errors="replace"
-        )
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
 DIR_HARNESS = ".harness"
 FILE_CURRENT_TASK = ".current-task"
-MAX_DEBUG_CYCLES = 3       # Failure budget (3-Failure Protocol)
-MAX_ITERATIONS = 5         # Safety limit to prevent infinite loops
-STATE_TIMEOUT_MINUTES = 30 # Reset state if older than this
-VERIFY_TIMEOUT_SECONDS = 60  # Per-command timeout
+MAX_DEBUG_CYCLES = 3
+MAX_ITERATIONS = 20
+STATE_TIMEOUT_MINUTES = 30
+VERIFY_TIMEOUT_SECONDS = 120
 
 
-def find_harness_dir() -> str | None:
-    """Find .harness/ directory."""
+def find_harness_dir() -> Path | None:
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     if project_dir:
-        candidate = os.path.join(project_dir, DIR_HARNESS)
-        if os.path.isdir(candidate):
+        candidate = Path(project_dir) / DIR_HARNESS
+        if candidate.is_dir():
             return candidate
 
-    candidate = os.path.join(os.getcwd(), DIR_HARNESS)
-    if os.path.isdir(candidate):
+    candidate = Path.cwd() / DIR_HARNESS
+    if candidate.is_dir():
         return candidate
-
     return None
 
 
-def get_current_task_dir(harness_dir: str) -> str | None:
-    """Read the current active task directory."""
-    current_task_file = os.path.join(harness_dir, FILE_CURRENT_TASK)
-    if not os.path.isfile(current_task_file):
+def get_current_task_dir(harness_dir: Path) -> Path | None:
+    marker = harness_dir / FILE_CURRENT_TASK
+    if not marker.is_file():
         return None
-    try:
-        with open(current_task_file, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            return content if content else None
-    except (IOError, UnicodeDecodeError):
+    task_dir = marker.read_text(encoding="utf-8").strip()
+    if not task_dir:
         return None
+    path = Path(task_dir)
+    return path if path.is_dir() else None
 
 
-def load_task_state(task_dir: str) -> dict:
-    """Load task state from task-specific state file (F4: per-task isolation)."""
-    state_file = os.path.join(task_dir, ".state.json")
-    if not os.path.isfile(state_file):
-        return _new_state()
-    try:
-        with open(state_file, "r", encoding="utf-8") as f:
-            state = json.load(f)
-
-        # Check for state timeout (stale state from abandoned session)
-        last_updated = state.get("last_updated", "")
-        if last_updated:
-            try:
-                last_dt = datetime.fromisoformat(last_updated)
-                if datetime.now() - last_dt > timedelta(minutes=STATE_TIMEOUT_MINUTES):
-                    return _new_state()  # Reset stale state
-            except (ValueError, TypeError):
-                pass
-
-        return state
-    except (json.JSONDecodeError, IOError):
-        return _new_state()
-
-
-def _new_state() -> dict:
-    """Create a fresh state object."""
+def new_state() -> dict:
     return {
         "iteration": 0,
         "debug_count": 0,
@@ -113,175 +52,159 @@ def _new_state() -> dict:
     }
 
 
-def save_task_state(task_dir: str, state: dict):
-    """Save task state atomically (temp file + rename)."""
-    state["last_updated"] = datetime.now().isoformat()
-    state_file = os.path.join(task_dir, ".state.json")
-    tmp_file = state_file + ".tmp"
+def load_state(task_dir: Path) -> dict:
+    state_file = task_dir / ".state.json"
+    if not state_file.is_file():
+        return new_state()
     try:
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
-        os.rename(tmp_file, state_file)
-    except IOError:
-        if os.path.exists(tmp_file):
-            os.unlink(tmp_file)
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return new_state()
+
+    stamp = state.get("last_updated", "")
+    try:
+        ts = datetime.fromisoformat(stamp)
+        if datetime.now() - ts > timedelta(minutes=STATE_TIMEOUT_MINUTES):
+            return new_state()
+    except ValueError:
+        return new_state()
+
+    return state
 
 
-def get_verify_commands(harness_dir: str) -> list[str]:
-    """Read verification commands from workflow.md."""
-    workflow_path = os.path.join(harness_dir, "workflow.md")
-    if not os.path.isfile(workflow_path):
+def save_state(task_dir: Path, state: dict) -> None:
+    state["last_updated"] = datetime.now().isoformat()
+    dst = task_dir / ".state.json"
+    tmp = task_dir / ".state.json.tmp"
+    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(dst)
+
+
+def get_verify_commands(harness_dir: Path) -> list[str]:
+    workflow = harness_dir / "workflow.md"
+    if not workflow.is_file():
         return []
 
-    commands = []
-    try:
-        with open(workflow_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("- **Test**:") or \
-                   line.startswith("- **Lint**:") or \
-                   line.startswith("- **Build**:") or \
-                   line.startswith("- **E2E Smoke**:"):
-                    parts = line.split("`")
-                    if len(parts) >= 2:
-                        cmd = parts[1].strip()
-                        if cmd and not cmd.startswith("_PLACEHOLDER"):
-                            commands.append(cmd)
-    except (IOError, UnicodeDecodeError):
-        pass
+    keys = ("- **Test**:", "- **Lint**:", "- **Build**:", "- **E2E Smoke**:")
+    commands: list[str] = []
 
+    for raw in workflow.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line.startswith(keys):
+            continue
+        parts = line.split("`")
+        if len(parts) >= 2:
+            cmd = parts[1].strip()
+            if cmd and not cmd.startswith("_PLACEHOLDER"):
+                commands.append(cmd)
     return commands
 
 
-def run_verify_command(cmd: str) -> tuple[bool, str]:
-    """Run a verification command and return (passed, output)."""
+def run_verify_command(command: str) -> tuple[bool, str]:
     try:
-        result = subprocess.run(
-            cmd,
+        proc = subprocess.run(
+            command,
             shell=True,
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
             timeout=VERIFY_TIMEOUT_SECONDS,
-            cwd=os.getcwd(),
         )
-        passed = result.returncode == 0
-        output = result.stdout[-500:] if len(result.stdout) > 500 else result.stdout
-        if not passed:
-            output += "\n" + (result.stderr[-300:] if len(result.stderr) > 300 else result.stderr)
-        return passed, output.strip()
     except subprocess.TimeoutExpired:
-        return False, f"Command timed out after {VERIFY_TIMEOUT_SECONDS}s"
-    except (FileNotFoundError, PermissionError) as e:
-        return False, f"Command error: {e}"
+        return False, f"timeout after {VERIFY_TIMEOUT_SECONDS}s"
+    except OSError as exc:
+        return False, f"os error: {exc}"
+
+    ok = proc.returncode == 0
+    output = (proc.stdout + "\n" + proc.stderr).strip()
+    if len(output) > 800:
+        output = output[-800:]
+    return ok, output
 
 
-def detect_agent_type(hook_input: dict) -> str:
-    """Detect which pipeline stage just completed."""
-    # Try to get from the stop event metadata
-    tool_input = hook_input.get("tool_input", {})
-    agent_type = tool_input.get("subagent_type", "").lower()
+def detect_stage(hook_input: dict) -> str:
+    # Codex SubagentStop payload carries flattened `agent_type`.
+    agent_type = str(hook_input.get("agent_type", "")).lower()
+    if not agent_type:
+        tool_input = hook_input.get("tool_input", {})
+        if isinstance(tool_input, dict):
+            agent_type = str(tool_input.get("subagent_type", "")).lower()
 
-    if "check" in agent_type or "review" in agent_type:
+    if any(k in agent_type for k in ("check", "review", "verify", "qa")):
         return "check"
-    if "debug" in agent_type or "fix" in agent_type:
+    if any(k in agent_type for k in ("debug", "fix", "bugfix")):
         return "debug"
-    if "implement" in agent_type:
-        return "implement"
     if "finish" in agent_type:
         return "finish"
+    if "implement" in agent_type:
+        return "implement"
 
-    # Fallback: scan tool output for clues
-    output = hook_input.get("tool_output", "").lower()
-    if "check" in output[:200] or "verify" in output[:200]:
+    msg = str(hook_input.get("last_assistant_message", "")).lower()
+    if "verify" in msg or "check" in msg:
         return "check"
-    if "debug" in output[:200] or "fix" in output[:200]:
+    if "debug" in msg or "fix" in msg:
         return "debug"
-
     return "unknown"
 
 
-def main():
-    harness_dir = find_harness_dir()
-    if not harness_dir:
-        return
+def deny(reason: str) -> None:
+    json.dump({"decision": "deny", "reason": reason}, sys.stdout, ensure_ascii=False)
 
-    # Read hook input
+
+def main() -> None:
     try:
         hook_input = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
+        return
+
+    # Only enforce at SubagentStop event.
+    if str(hook_input.get("hook_event_name", "")).lower() != "subagentstop":
+        return
+
+    harness_dir = find_harness_dir()
+    if not harness_dir:
         return
 
     task_dir = get_current_task_dir(harness_dir)
     if not task_dir:
         return
 
-    state = load_task_state(task_dir)
-    agent_type = detect_agent_type(hook_input)
+    state = load_state(task_dir)
+    stage = detect_stage(hook_input)
 
-    # Increment iteration counter (safety limit)
-    state["iteration"] = state.get("iteration", 0) + 1
+    state["iteration"] = int(state.get("iteration", 0)) + 1
     if state["iteration"] > MAX_ITERATIONS:
-        warning = (
-            f"\n\n## Safety Limit Reached\n\n"
-            f"Max iterations ({MAX_ITERATIONS}) exceeded.\n"
-            f"This is a safety limit to prevent infinite loops.\n"
-            f"Please review the task state and restart if needed.\n"
-        )
-        json.dump({"result": warning}, sys.stdout, ensure_ascii=False)
-        save_task_state(task_dir, state)
+        save_state(task_dir, state)
+        deny(f"Safety limit reached: iteration > {MAX_ITERATIONS}. Please review task flow.")
         return
 
-    # === FAILURE BUDGET (3-Failure Protocol) ===
-    if agent_type == "debug":
-        state["debug_count"] = state.get("debug_count", 0) + 1
+    if stage == "debug":
+        state["debug_count"] = int(state.get("debug_count", 0)) + 1
         if state["debug_count"] >= MAX_DEBUG_CYCLES:
-            escalation = (
-                f"\n\n## Failure Budget Exhausted\n\n"
-                f"Debug cycle {state['debug_count']}/{MAX_DEBUG_CYCLES} reached.\n"
-                f"**STOP** and escalate to human with structured request:\n\n"
-                f"1. What was attempted (all {state['debug_count']} cycles)\n"
-                f"2. What error persists\n"
-                f"3. Your top 2 recommended approaches (with trade-offs)\n"
-                f"4. What information you're missing\n"
-                f"5. Default recommendation if human doesn't respond\n"
+            save_state(task_dir, state)
+            deny(
+                "Failure budget exhausted (debug >= 3). Escalate with A/B options and risks."
             )
-            json.dump({"result": escalation}, sys.stdout, ensure_ascii=False)
-            save_task_state(task_dir, state)
             return
 
-    # === QUALITY GATE (verify commands) ===
-    if agent_type == "check":
-        verify_cmds = get_verify_commands(harness_dir)
-        if verify_cmds:
-            failed_cmds = []
-            for cmd in verify_cmds:
-                passed, output = run_verify_command(cmd)
-                if not passed:
-                    failed_cmds.append((cmd, output))
+    if stage == "check":
+        failures: list[str] = []
+        for cmd in get_verify_commands(harness_dir):
+            ok, output = run_verify_command(cmd)
+            if not ok:
+                failures.append(f"{cmd}\n{output}")
 
-            if failed_cmds:
-                gate_result = "\n\n## Quality Gate: Verification Failed\n\n"
-                for cmd, output in failed_cmds:
-                    gate_result += f"### `{cmd}` — FAILED\n\n"
-                    if output:
-                        gate_result += f"\n\n"
-                gate_result += (
-                    "Please fix the failing checks before marking the task complete.\n"
-                    "If you cannot fix them, escalate with a structured request.\n"
-                )
-                json.dump({"result": gate_result}, sys.stdout, ensure_ascii=False)
-                save_task_state(task_dir, state)
-                return
+        if failures:
+            save_state(task_dir, state)
+            reason = "Quality gate failed.\n\n" + "\n\n---\n\n".join(failures)
+            deny(reason)
+            return
 
-    # Record completion
-    state.setdefault("completions", []).append({
-        "agent": agent_type,
-        "timestamp": datetime.now().isoformat(),
-    })
-
-    save_task_state(task_dir, state)
+    state.setdefault("completions", []).append(
+        {"stage": stage, "timestamp": datetime.now().isoformat()}
+    )
+    save_state(task_dir, state)
 
 
 if __name__ == "__main__":

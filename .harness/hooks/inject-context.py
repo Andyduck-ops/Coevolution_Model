@@ -1,26 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PreToolUse hook — inject context from JSONL into subagent tasks.
+"""Inject task context into spawned agents (Codex hook compatible)."""
 
-Derived from Trellis inject-subagent-context.py (820 lines, battle-tested).
-Simplified to ~150 lines while preserving core patterns.
-
-Triggered on: Task tool calls
-Reads: {task_dir}/implement.jsonl, check.jsonl, debug.jsonl
-Injects: File contents declared in JSONL into the agent's context
-
-Key features from Trellis:
-- UTF-8 safety (Windows compatible)
-- CLAUDE_PROJECT_DIR awareness
-- Repo root walking
-- File path extraction from prd.md (F5 feature)
-- spec.jsonl fallback
-- Silent skip on missing files (defensive design)
-"""
-
-# IMPORTANT: Suppress all warnings FIRST
-import warnings
-warnings.filterwarnings("ignore")
+from __future__ import annotations
 
 import json
 import os
@@ -28,27 +10,11 @@ import re
 import sys
 from pathlib import Path
 
-# IMPORTANT: Force stdout to use UTF-8 on Windows
-if sys.platform == "win32":
-    import io as _io
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    elif hasattr(sys.stdout, "detach"):
-        sys.stdout = _io.TextIOWrapper(
-            sys.stdout.detach(), encoding="utf-8", errors="replace"
-        )
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
 DIR_HARNESS = ".harness"
 FILE_CURRENT_TASK = ".current-task"
 MAX_FILES = 20
-MAX_CHARS_PER_FILE = 12000  # ~3000 tokens
-AGENTS_NO_PHASE_UPDATE = {"debug", "research"}
+MAX_CHARS_PER_FILE = 12000
 
-# Agent type detection — order matters (first match wins)
 AGENT_KEYWORDS = [
     (["check", "review", "verify", "qa"], "check"),
     (["debug", "fix", "bugfix"], "debug"),
@@ -59,7 +25,6 @@ AGENT_KEYWORDS = [
 
 
 def find_harness_dir() -> Path | None:
-    """Find .harness/ directory."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     if project_dir:
         candidate = Path(project_dir) / DIR_HARNESS
@@ -72,35 +37,15 @@ def find_harness_dir() -> Path | None:
 
     current = Path.cwd().resolve()
     while current != current.parent:
-        if (current / ".git").exists() and (current / DIR_HARNESS).is_dir():
-            return current / DIR_HARNESS
+        candidate = current / DIR_HARNESS
+        if (current / ".git").exists() and candidate.is_dir():
+            return candidate
         current = current.parent
-
     return None
 
 
-def detect_agent_type(tool_input: dict) -> str:
-    """Detect pipeline stage from subagent_type and prompt."""
-    agent_type = tool_input.get("subagent_type", "").lower()
-    prompt = tool_input.get("prompt", "").lower()
-    combined = f"{agent_type} {prompt}"
-
-    for keywords, stage in AGENT_KEYWORDS:
-        for kw in keywords:
-            if kw in agent_type:  # Prioritize explicit type
-                return stage
-
-    for keywords, stage in AGENT_KEYWORDS:
-        for kw in keywords:
-            if kw in combined:
-                return stage
-
-    return "implement"  # Default
-
-
 def read_jsonl(filepath: str) -> list[dict]:
-    """Read JSONL file, skip comments and invalid lines."""
-    entries = []
+    entries: list[dict] = []
     if not os.path.isfile(filepath):
         return entries
     try:
@@ -113,162 +58,187 @@ def read_jsonl(filepath: str) -> list[dict]:
                     entries.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
-    except (IOError, UnicodeDecodeError):
-        pass
+    except (OSError, UnicodeDecodeError):
+        return []
     return entries
 
 
-def extract_file_paths_from_prd(prd_path: str) -> list[str]:
-    """Extract file paths mentioned in prd.md (F5 feature from Trellis)."""
-    if not os.path.isfile(prd_path):
-        return []
+def read_file_content(path: str, max_chars: int = MAX_CHARS_PER_FILE) -> str | None:
     try:
-        with open(prd_path, "r", encoding="utf-8") as f:
-            content = f.read()
-    except (IOError, UnicodeDecodeError):
-        return []
-
-    # Match common path patterns: src/foo/bar.ts, ./components/X.tsx, etc.
-    patterns = [
-        r'`([\w./\-]+\.[a-zA-Z]{1,5})`',       # `path/to/file.ext`
-        r'\b(src/[\w./\-]+\.[a-zA-Z]{1,5})\b',  # src/path/to/file.ext
-        r'\b(app/[\w./\-]+\.[a-zA-Z]{1,5})\b',  # app/path/to/file.ext
-        r'\b(lib/[\w./\-]+\.[a-zA-Z]{1,5})\b',  # lib/path/to/file.ext
-    ]
-    paths = set()
-    for pattern in patterns:
-        for match in re.findall(pattern, content):
-            if not match.startswith("http") and os.path.isfile(match):
-                paths.add(match)
-    return list(paths)[:5]  # Cap at 5 auto-discovered files
-
-
-def resolve_file(file_path: str, harness_dir: Path, task_dir: str | None) -> str | None:
-    """Resolve file path relative to .harness/, task dir, or project root."""
-    # 1. Relative to .harness/
-    candidate = str(harness_dir / file_path)
-    if os.path.exists(candidate):
-        return candidate
-
-    # 2. Relative to task dir
-    if task_dir:
-        candidate = os.path.join(task_dir, file_path)
-        if os.path.exists(candidate):
-            return candidate
-
-    # 3. Absolute or project-relative
-    if os.path.exists(file_path):
-        return file_path
-
-    return None  # Silent skip — defensive design
-
-
-def read_file_content(filepath: str, max_chars: int = MAX_CHARS_PER_FILE) -> str | None:
-    """Read file content with truncation."""
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read(max_chars + 1)
         if len(content) > max_chars:
             content = content[:max_chars] + "\n\n[... truncated ...]"
         return content
-    except (IOError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError):
         return None
 
 
-def read_directory_md_files(dirpath: str, max_chars: int = MAX_CHARS_PER_FILE) -> str | None:
-    """Read all .md files in a directory."""
-    if not os.path.isdir(dirpath):
+def read_directory_md_files(path: str, max_chars: int = MAX_CHARS_PER_FILE) -> str | None:
+    if not os.path.isdir(path):
         return None
-    contents = []
-    budget_per_file = max(max_chars // 10, 2000)
-    for fname in sorted(os.listdir(dirpath)):
-        if fname.endswith(".md"):
-            fpath = os.path.join(dirpath, fname)
-            content = read_file_content(fpath, budget_per_file)
-            if content:
-                contents.append(f"### {fname}\n\n{content}")
-    return "\n\n".join(contents) if contents else None
+    chunks: list[str] = []
+    per_file = max(max_chars // 10, 2000)
+    for filename in sorted(os.listdir(path)):
+        if not filename.endswith(".md"):
+            continue
+        content = read_file_content(os.path.join(path, filename), per_file)
+        if content:
+            chunks.append(f"### {filename}\n\n{content}")
+    return "\n\n".join(chunks) if chunks else None
 
 
-def main():
+def extract_file_paths_from_prd(prd_path: str) -> list[str]:
+    if not os.path.isfile(prd_path):
+        return []
+    try:
+        text = Path(prd_path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+
+    patterns = [
+        r"`([\w./\-]+\.[a-zA-Z]{1,6})`",
+        r"\b(src/[\w./\-]+\.[a-zA-Z]{1,6})\b",
+        r"\b(tests/[\w./\-]+\.[a-zA-Z]{1,6})\b",
+        r"\b(configs/[\w./\-]+\.[a-zA-Z]{1,6})\b",
+    ]
+    found: set[str] = set()
+    for pattern in patterns:
+        for item in re.findall(pattern, text):
+            if not item.startswith("http") and os.path.isfile(item):
+                found.add(item)
+    return list(found)[:5]
+
+
+def resolve_path(path: str, harness_dir: Path, task_dir: str | None) -> str | None:
+    candidate = str(harness_dir / path)
+    if os.path.exists(candidate):
+        return candidate
+    if task_dir:
+        candidate = os.path.join(task_dir, path)
+        if os.path.exists(candidate):
+            return candidate
+    if os.path.exists(path):
+        return path
+    return None
+
+
+def detect_stage(agent_hint: str, prompt_hint: str) -> str:
+    agent_hint = agent_hint.lower()
+    prompt_hint = prompt_hint.lower()
+    combined = f"{agent_hint} {prompt_hint}"
+
+    for keys, stage in AGENT_KEYWORDS:
+        if any(k in agent_hint for k in keys):
+            return stage
+    for keys, stage in AGENT_KEYWORDS:
+        if any(k in combined for k in keys):
+            return stage
+    return "implement"
+
+
+def parse_hook_agent_context(hook_input: dict) -> tuple[str, str] | None:
+    event_name = str(hook_input.get("hook_event_name", "")).lower()
+
+    if event_name == "subagentstart":
+        agent_type = str(hook_input.get("agent_type", ""))
+        return agent_type, ""
+
+    if event_name == "pretooluse":
+        tool_name = str(hook_input.get("tool_name", ""))
+        if tool_name not in {"Task", "spawn_agent", "spawn_team", "team_message"}:
+            return None
+
+        tool_input = hook_input.get("tool_input", {})
+        if not isinstance(tool_input, dict):
+            tool_input = {}
+
+        agent_type = str(tool_input.get("agent_type") or tool_input.get("subagent_type") or "")
+        prompt_parts: list[str] = []
+        for key in ("prompt", "message", "task"):
+            value = tool_input.get(key)
+            if isinstance(value, str):
+                prompt_parts.append(value)
+
+        items = tool_input.get("items")
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict) and isinstance(item.get("text"), str):
+                    prompt_parts.append(item["text"])
+
+        return agent_type, "\n".join(prompt_parts)
+
+    return None
+
+
+def main() -> None:
     harness_dir = find_harness_dir()
     if not harness_dir:
         return
 
-    # Read hook input from stdin
     try:
         hook_input = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         return
 
-    tool_name = hook_input.get("tool_name", "")
-    if tool_name != "Task":
+    parsed = parse_hook_agent_context(hook_input)
+    if parsed is None:
         return
 
-    tool_input = hook_input.get("tool_input", {})
+    agent_hint, prompt_hint = parsed
+    stage = detect_stage(agent_hint, prompt_hint)
 
-    # Get current task
-    current_task_file = harness_dir / FILE_CURRENT_TASK
-    if not current_task_file.is_file():
+    current_task = harness_dir / FILE_CURRENT_TASK
+    if not current_task.is_file():
         return
-    task_dir = current_task_file.read_text(encoding="utf-8").strip()
+    task_dir = current_task.read_text(encoding="utf-8").strip()
     if not task_dir:
         return
 
-    agent_type = detect_agent_type(tool_input)
-
-    # Determine which JSONL to read
-    jsonl_path = os.path.join(task_dir, f"{agent_type}.jsonl")
-    entries = read_jsonl(jsonl_path)
-
-    # Fallback to spec.jsonl (Trellis compat)
+    entries = read_jsonl(os.path.join(task_dir, f"{stage}.jsonl"))
     if not entries:
         entries = read_jsonl(os.path.join(task_dir, "spec.jsonl"))
 
-    # F5: Auto-extract file paths from prd.md for implement stage
-    if agent_type == "implement":
+    if stage == "implement":
         prd_path = os.path.join(task_dir, "prd.md")
         auto_paths = extract_file_paths_from_prd(prd_path)
-        for p in auto_paths:
-            # Don't duplicate existing entries
-            existing_files = {e.get("file") or e.get("path") for e in entries}
-            if p not in existing_files:
-                entries.append({"file": p, "reason": "auto-discovered from prd.md"})
+        existing = {entry.get("file") or entry.get("path") for entry in entries}
+        for path in auto_paths:
+            if path not in existing:
+                entries.append({"file": path, "reason": "auto-discovered from prd.md"})
 
     if not entries:
         return
 
-    # Resolve and read files
-    context_blocks = []
-    files_loaded = 0
-
+    blocks: list[str] = []
     for entry in entries[:MAX_FILES]:
-        file_path = entry.get("file") or entry.get("path")
-        if not file_path:
+        path = entry.get("file") or entry.get("path")
+        if not path:
             continue
-
         file_type = entry.get("type", "file")
-        resolved = resolve_file(file_path, harness_dir, task_dir)
+        resolved = resolve_path(path, harness_dir, task_dir)
         if not resolved:
-            continue  # Silent skip — defensive design
+            continue
 
         if file_type == "directory":
             content = read_directory_md_files(resolved)
         else:
             content = read_file_content(resolved)
+        if not content:
+            continue
 
-        if content:
-            reason = entry.get("reason", "")
-            header = f"## [{file_path}]" + (f" — {reason}" if reason else "")
-            context_blocks.append(f"{header}\n\n{content}")
-            files_loaded += 1
+        reason = entry.get("reason", "")
+        title = f"## [{path}]" + (f" — {reason}" if reason else "")
+        blocks.append(f"{title}\n\n{content}")
 
-    if context_blocks:
-        result = (
-            f"# Injected Context ({agent_type} stage, {files_loaded} files)\n\n"
-            + "\n\n---\n\n".join(context_blocks)
-        )
-        json.dump({"result": result}, sys.stdout, ensure_ascii=False)
+    if not blocks:
+        return
+
+    payload = (
+        f"# Injected Context ({stage} stage)\n\n"
+        + "\n\n---\n\n".join(blocks)
+    )
+    json.dump({"additionalContext": payload}, sys.stdout, ensure_ascii=False)
 
 
 if __name__ == "__main__":

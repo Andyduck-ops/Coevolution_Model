@@ -1,0 +1,25 @@
+[hooks]
+
+[[hooks.session_start]]
+name = "harness-session-start"
+command = ["python3", ".harness/hooks/session-start.py"]
+timeout = 10
+
+[[hooks.pre_tool_use]]
+name = "harness-inject-context"
+command = ["python3", ".harness/hooks/inject-context.py"]
+timeout = 20
+[hooks.pre_tool_use.matcher]
+tool_name_regex = "^(Task|spawn_agent|spawn_team|team_message)$"
+
+[[hooks.post_tool_use]]
+name = "harness-track-staleness"
+command = ["python3", ".harness/hooks/track-staleness.py"]
+timeout = 10
+[hooks.post_tool_use.matcher]
+tool_name_regex = "^(Edit|Write|MultiEdit)$"
+
+[[hooks.subagent_stop]]
+name = "harness-quality-gate"
+command = ["python3", ".harness/hooks/quality-gate.py"]
+timeout = 120

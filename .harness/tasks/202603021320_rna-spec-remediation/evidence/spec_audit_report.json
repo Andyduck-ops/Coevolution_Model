@@ -1,0 +1,47 @@
+{
+  "ok": false,
+  "type": "spec-audit",
+  "findings": [
+    {
+      "severity": "error",
+      "item": "equations-reference-p0-p1",
+      "missing": [
+        "v_R",
+        "v_P",
+        "k_BT",
+        "Θ_R",
+        "W^I",
+        "W^II",
+        "A_eff",
+        "X_loc",
+        "B_n",
+        "Π_P"
+      ]
+    },
+    {
+      "severity": "error",
+      "item": "dependency-pinning",
+      "missing": [
+        "numpy>=",
+        "scipy>=",
+        "matplotlib>=",
+        "pyyaml>=",
+        "tqdm>="
+      ]
+    },
+    {
+      "severity": "warn",
+      "item": "numerical-computing-detail",
+      "missing": "Jacobian"
+    },
+    {
+      "severity": "warn",
+      "item": "numerical-computing-detail",
+      "missing": "事件"
+    }
+  ],
+  "summary": {
+    "errors": 2,
+    "warnings": 2
+  }
+}
