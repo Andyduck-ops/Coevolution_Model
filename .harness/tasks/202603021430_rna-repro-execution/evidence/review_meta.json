@@ -6,7 +6,10 @@
     "thermodynamics",
     "post-segregation",
     "stability analysis",
-    "figure reproduction scripts"
+    "figure reproduction scripts",
+    "claim experiments",
+    "ablation experiments",
+    "paper validation merge report"
   ],
-  "review_time_utc": "2026-03-02T06:35:00Z"
+  "review_time_utc": "2026-03-02T08:00:00Z"
 }

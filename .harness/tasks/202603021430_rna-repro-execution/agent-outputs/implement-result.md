@@ -6,6 +6,9 @@
 - [x] I3: `solve_post_segregation()` 两相后分离积分包装
 - [x] I4: `critical_stress()` / `compute_spinodal()` 稳定性接口
 - [x] I5: Fig1-4 独立脚本 + 复现检查脚本
+- [x] I6: 论文命题实验执行器（E1-E5）
+- [x] I7: 消融/反驳实验执行器（R1-R4）
+- [x] I8: 统一论文验证报告聚合
 
 ## 关键新增文件
 - `src/rna_llps/solvers/ode_wrappers.py`
@@ -18,6 +21,9 @@
 - `scripts/fig3_spinodal.py`
 - `scripts/fig4_post_segregation.py`
 - `scripts/check_reproduction_metrics.py`
+- `scripts/run_claim_experiments.py`
+- `scripts/run_ablation_experiments.py`
+- `scripts/merge_claim_ablation_report.py`
 
 ## 测试补齐
 - [x] `tests/test_flory_huggins.py`
@@ -26,3 +32,6 @@
 - [x] `tests/test_post_segregation.py`
 - [x] `tests/test_stability_analysis.py`
 - [x] `tests/test_reproduction_pipeline.py`
+- [x] `tests/test_claim_experiments.py`
+- [x] `tests/test_ablation_experiments.py`
+- [x] `tests/test_merge_claim_ablation_report.py`
